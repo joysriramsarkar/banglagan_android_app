@@ -9,12 +9,12 @@ plugins {
 
 android {
     namespace = "com.example.banglagan"
-    compileSdk = 35 // আপনি চাইলে আপনার SDK ভার্সন অনুযায়ী পরিবর্তন করতে পারেন
+    compileSdk = 36 // আপনি চাইলে আপনার SDK ভার্সন অনুযায়ী পরিবর্তন করতে পারেন
 
     defaultConfig {
         applicationId = "com.example.banglagan"
         minSdk = 21 // নূন্যতম SDK ভার্সন
-        targetSdk = 35 // টার্গেট SDK ভার্সন
+        targetSdk = 36 // টার্গেট SDK ভার্সন
         versionCode = 1
         versionName = "1.0"
 

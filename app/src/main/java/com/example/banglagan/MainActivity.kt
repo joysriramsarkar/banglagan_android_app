@@ -9,6 +9,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.aspectRatio // এই ইম্পোর্টগুলো যোগ করুন
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
@@ -21,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -34,6 +38,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.banglagan.data.Song // Song ডেটা ক্লাসের ইম্পোর্ট
 import com.example.banglagan.data.SongDao
 import com.example.banglagan.data.SongRepository
+import com.example.banglagan.utils.toBanglaString
 import com.example.banglagan.vi.song.SongUiState // SongUiState এর ইম্পোর্ট
 import com.example.banglagan.vi.song.SongViewModel
 import com.example.banglagan.vi.song.SongViewModelFactory
@@ -48,6 +53,7 @@ object AppDestinations {
     const val SONG_DETAIL_ROUTE = "song_detail" // গানের বিস্তারিত স্ক্রিনের রুট, songId সহ
     const val SEARCH_ROUTE = "search" // সার্চ স্ক্রিনের রুট
     const val FAVORITES_ROUTE = "favorites" // পছন্দের গানের তালিকা স্ক্রিনের রুট
+    const val ARTIST_LIST_ROUTE = "artist_list"
 }
 
 class MainActivity : ComponentActivity() {
@@ -89,6 +95,7 @@ fun BanglaGanApp(songViewModel: SongViewModel) {
                     AppDestinations.SONG_LIST_ROUTE -> "সব গান"
                     AppDestinations.FAVORITES_ROUTE -> "পছন্দের গান"
                     AppDestinations.SEARCH_ROUTE -> "গান খুঁজুন"
+                    AppDestinations.ARTIST_LIST_ROUTE -> "শিল্পীর তালিকা"
                     "${AppDestinations.SONG_DETAIL_ROUTE}/{songId}" -> "গানের বিবরণ" // এটি পরিবর্তন হতে পারে
                     else -> "বাংলা গান"
                 },
@@ -220,7 +227,11 @@ fun BanglaGanNavHost(
         modifier = modifier
     ) {
         composable(AppDestinations.HOME_ROUTE) { // হোম স্ক্রিনের জন্য Composable
-            HomeScreen(navController = navController)
+            val songUiState by songViewModel.songUiState.collectAsState() // ViewModel থেকে UiState সংগ্রহ করুন
+            HomeScreen(
+                uiState = songUiState, // HomeScreen-এ UiState পাস করুন
+                navController = navController
+            )
         }
         composable(AppDestinations.SONG_LIST_ROUTE) { // গানের তালিকা স্ক্রিনের জন্য Composable
             val songUiState by songViewModel.songUiState.collectAsState()
@@ -273,24 +284,46 @@ fun BanglaGanNavHost(
                 onFavoriteToggle = { song -> songViewModel.toggleFavoriteStatus(song) }
             )
         }
+        composable(AppDestinations.ARTIST_LIST_ROUTE) { // শিল্পীর তালিকা স্ক্রিন
+            val artists by songViewModel.allArtists.collectAsState()
+            ArtistListScreen(
+                artists = artists,
+                onArtistClick = { artistName ->
+                    // আপাতত, আমরা শিল্পীর নামে সার্চ স্ক্রিনে পাঠাতে পারি
+                    // পরে আমরা নির্দিষ্ট শিল্পীর গানের তালিকা দেখাব
+                    navController.navigate("${AppDestinations.SEARCH_ROUTE}?query=${artistName.trim()}")
+                }
+            )
+        }
     }
 }
 
 // --- নতুন স্ক্রিনগুলোর কঙ্কাল ---
 
 @Composable
-fun HomeScreen(navController: NavController, modifier: Modifier = Modifier) {
-    // এখানে বিভিন্ন যুগ বা ক্যাটাগরি দেখানো যেতে পারে
+fun HomeScreen(
+    uiState: SongUiState, // SongUiState গ্রহণ করুন
+    navController: NavController,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp) // আইটেমগুলোর মধ্যে ফাঁকা জায়গা
+        verticalArrangement = Arrangement.spacedBy(16.dp) // আইটেমগুলোর মধ্যে ফাঁকা জায়গা
     ) {
         Text("স্বাগতম!", style = MaterialTheme.typography.headlineMedium)
+
+        // --- পরিসংখ্যান বিভাগ ---
+        Text("এক নজরে ডেটাবেস", style = MaterialTheme.typography.titleLarge)
+        Spacer(modifier = Modifier.height(8.dp))
+        StatsGrid(uiState = uiState) // পরিসংখ্যান দেখানোর গ্রিড
         Spacer(modifier = Modifier.height(16.dp))
 
+        // --- অন্যান্য বাটন ---
+        Text("আরও দেখুন", style = MaterialTheme.typography.titleLarge)
+        Spacer(modifier = Modifier.height(8.dp))
         Card(modifier = Modifier
             .fillMaxWidth()
             .clickable { navController.navigate(AppDestinations.SONG_LIST_ROUTE) }) {
@@ -298,13 +331,58 @@ fun HomeScreen(navController: NavController, modifier: Modifier = Modifier) {
         }
         Card(modifier = Modifier
             .fillMaxWidth()
-            .clickable { /* navController.navigate("song_list/charyapad") */ }) {
-            Text("চর্যাপদ", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp))
+            .clickable { navController.navigate(AppDestinations.FAVORITES_ROUTE) }) {
+            Text("পছন্দের গান", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp))
         }
-        Card(modifier = Modifier
+        // আপনি চাইলে এখানে আরও বাটন যোগ করতে পারেন
+    }
+}
+
+@Composable
+fun StatsGrid(uiState: SongUiState, modifier: Modifier = Modifier) {
+    // LazyVerticalGrid ব্যবহার করে গ্রিড তৈরি করা হচ্ছে
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2), // দুটি কলাম থাকবে
+        modifier = modifier
             .fillMaxWidth()
-            .clickable { /* navController.navigate("song_list/modern") */ }) {
-            Text("আধুনিক গান", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp))
+            .height(300.dp), // গ্রিডের একটি নির্দিষ্ট উচ্চতা দিন বা প্রয়োজন অনুযায়ী পরিবর্তন করুন
+        horizontalArrangement = Arrangement.spacedBy(16.dp), // কলামের মধ্যে ফাঁকা জায়গা
+        verticalArrangement = Arrangement.spacedBy(16.dp), // সারির মধ্যে ফাঁকা জায়গা
+        contentPadding = PaddingValues(8.dp)
+    ) {
+        item { StatsCard(label = "মোট গান", count = uiState.totalSongs) }
+        item { StatsCard(label = "মোট শিল্পী", count = uiState.totalArtists) }
+        item { StatsCard(label = "মোট গীতিকার", count = uiState.totalLyricists) }
+        item { StatsCard(label = "মোট সুরকার", count = uiState.totalComposers) }
+        // আপনি চাইলে এখানে আরও কার্ড যোগ করতে পারেন
+    }
+}
+
+@Composable
+fun StatsCard(label: String, count: Int, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier
+            .aspectRatio(1f), // কার্ডটিকে বর্গাকার করার চেষ্টা
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = count.toBanglaString(),
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center // লেখা মাঝখানে দেখানোর জন্য
+            )
         }
     }
 }
@@ -455,7 +533,7 @@ fun SongDetailScreen(song: Song, songViewModel: SongViewModel, modifier: Modifie
             item { Text("ধরণ: ${song.genre}", style = MaterialTheme.typography.bodyLarge) }
         }
         if (song.releaseYear != null && song.releaseYear > 0) {
-            item { Text("প্রকাশকাল: ${song.releaseYear}", style = MaterialTheme.typography.bodyLarge) }
+            item { Text("প্রকাশকাল: ${song.releaseYear?.toBanglaString() ?: ""}", style = MaterialTheme.typography.bodyLarge) }
         }
 
         if (!song.lyrics.isNullOrEmpty()) {
@@ -565,7 +643,6 @@ private class FakeSongDao : SongDao {
         Song(id = 1, title = "আমার সোনার বাংলা", artistName = "রবীন্দ্রনাথ ঠাকুর", era = "আধুনিক", genre = "রবীন্দ্রসঙ্গীত", isFavorite = true)
     ))
 
-    // প্রিভিউয়ের জন্য একটি নির্দিষ্ট গান রিটার্ন করবে
     override fun getSongById(songId: Int): Flow<Song?> = flowOf(
         Song(
             id = 1,
@@ -579,7 +656,7 @@ private class FakeSongDao : SongDao {
             releaseYear = 1983,
             lyrics = "কফি হাউসের সেই আড্ডাটা আজ আর নেই,\nকোথায় হারিয়ে গেল সোনালী বিকেলগুলো সেই...",
             isFavorite = true,
-            notes = "একটি কালজয়ী জনপ্রিয় বাংলা গান।"
+            notes = "একটি কালজয়ী জনপ্রিয় বাংলা গান。"
         )
     )
 
@@ -588,10 +665,18 @@ private class FakeSongDao : SongDao {
     override suspend fun updateSong(song: Song) {}
     override suspend fun deleteSong(song: Song) {}
     override fun searchSongs(query: String): Flow<List<Song>> = flowOf(emptyList())
-
-    // এই দুটি মেথড যোগ করতে হবে
     override fun getSongsByArtist(artistName: String): Flow<List<Song>> = flowOf(emptyList())
     override fun getSongsByGenre(genreName: String): Flow<List<Song>> = flowOf(emptyList())
+
+    // --- এই নতুন ফাংশনগুলো যোগ করুন ---
+    override fun getSongCount(): Flow<Int> = flowOf(869) // ডামি সংখ্যা
+    override fun getArtistCount(): Flow<Int> = flowOf(29)  // ডামি সংখ্যা
+    override fun getLyricistCount(): Flow<Int> = flowOf(990)// ডামি সংখ্যা
+    override fun getComposerCount(): Flow<Int> = flowOf(67) // ডামি সংখ্যা
+    // --- এই নতুন ফাংশনটি যোগ করুন ---
+    override fun getAllArtists(): Flow<List<String>> = flowOf(listOf("রবীন্দ্রনাথ ঠাকুর", "মান্না দে", "কাজী নজরুল ইসলাম"))
+    // --- ---
+    // --- ---
 }
 
 
@@ -611,7 +696,17 @@ fun SongItemPreview() {
 @Composable
 fun HomeScreenPreview() {
     BanglaGanTheme {
-        HomeScreen(navController = rememberNavController())
+        // প্রিভিউয়ের জন্য একটি ডামি UiState তৈরি করুন
+        val previewUiState = SongUiState(
+            totalSongs = 869,
+            totalArtists = 29,
+            totalLyricists = 990,
+            totalComposers = 67
+        )
+        HomeScreen(
+            uiState = previewUiState, // ডামি ডেটা পাস করুন
+            navController = rememberNavController() // প্রিভিউয়ের জন্য একটি ডামি NavController
+        )
     }
 }
 
@@ -638,5 +733,32 @@ fun SongDetailScreenPreview() {
         val dummyViewModel = SongViewModel(SongRepository(FakeSongDao()))
 
         SongDetailScreen(song = previewSong, songViewModel = dummyViewModel)
+    }
+}
+
+@Composable
+fun ArtistListScreen(
+    artists: List<String>,
+    onArtistClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (artists.isEmpty()) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("কোনো শিল্পী পাওয়া যায়নি।")
+        }
+    } else {
+        LazyColumn(modifier = modifier.padding(16.dp)) {
+            items(artists) { artist ->
+                Text(
+                    text = artist,
+                    style = MaterialTheme.typography.titleMedium, // একটু বড় ফন্ট
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onArtistClick(artist) }
+                        .padding(vertical = 16.dp) // প্রতিটি আইটেমের মধ্যে ফাঁকা জায়গা
+                )
+                Divider() // আইটেমগুলোর মধ্যে বিভাজক রেখা
+            }
+        }
     }
 }

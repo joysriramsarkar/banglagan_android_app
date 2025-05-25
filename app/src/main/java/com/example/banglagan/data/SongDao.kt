@@ -59,4 +59,24 @@ interface SongDao {
     // গানের ধরণ (Genre) অনুযায়ী ফিল্টার করার জন্য
     @Query("SELECT * FROM songs WHERE LOWER(genre) = LOWER(:genreName) ORDER BY song_title ASC")
     fun getSongsByGenre(genreName: String): Flow<List<Song>>
+
+    // মোট গানের সংখ্যা পাওয়ার জন্য
+    @Query("SELECT COUNT(*) FROM songs")
+    fun getSongCount(): Flow<Int>
+
+    // মোট স্বতন্ত্র শিল্পীর সংখ্যা পাওয়ার জন্য (ফাঁকা বা null বাদ দিয়ে)
+    @Query("SELECT COUNT(DISTINCT artist_name) FROM songs WHERE artist_name IS NOT NULL AND artist_name != ''")
+    fun getArtistCount(): Flow<Int>
+
+    // মোট স্বতন্ত্র গীতিকারের সংখ্যা পাওয়ার জন্য (ফাঁকা বা null বাদ দিয়ে)
+    @Query("SELECT COUNT(DISTINCT lyricist_name) FROM songs WHERE lyricist_name IS NOT NULL AND lyricist_name != ''")
+    fun getLyricistCount(): Flow<Int>
+
+    // মোট স্বতন্ত্র সুরকারের সংখ্যা পাওয়ার জন্য (ফাঁকা বা null বাদ দিয়ে)
+    @Query("SELECT COUNT(DISTINCT composer_name) FROM songs WHERE composer_name IS NOT NULL AND composer_name != ''")
+    fun getComposerCount(): Flow<Int>
+
+    // সব স্বতন্ত্র শিল্পীর নাম পাওয়ার জন্য (সাজানো)
+    @Query("SELECT DISTINCT artist_name FROM songs WHERE artist_name IS NOT NULL AND artist_name != '' ORDER BY artist_name ASC")
+    fun getAllArtists(): Flow<List<String>>
 }

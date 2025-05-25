@@ -7,29 +7,58 @@ import com.example.banglagan.data.Song
 import com.example.banglagan.data.SongRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.combine
 
 // SongViewModel এর UI State ডাটা ক্লাস
 data class SongUiState(
     val allSongs: List<Song> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val totalSongs: Int = 0, // নতুন: মোট গান
+    val totalArtists: Int = 0, // নতুন: মোট শিল্পী
+    val totalLyricists: Int = 0, // নতুন: মোট গীতিকার
+    val totalComposers: Int = 0 // নতুন: মোট সুরকার
 )
 
 class SongViewModel(private val repository: SongRepository) : ViewModel() {
 
     // সব গানের তালিকা UI State হিসেবে
-    val songUiState: StateFlow<SongUiState> =
-        repository.allSongs
-            .map { songs -> SongUiState(allSongs = songs, isLoading = false) }
+     val songUiState: StateFlow<SongUiState> =
+        combine(
+            repository.allSongs,
+            repository.songCount,
+            repository.artistCount,
+            repository.lyricistCount,
+            repository.composerCount
+        ) { songs, songCount, artistCount, lyricistCount, composerCount ->
+            // সব Flow থেকে পাওয়া ডেটা দিয়ে SongUiState তৈরি হচ্ছে
+            SongUiState(
+                allSongs = songs,
+                isLoading = false,
+                totalSongs = songCount,
+                totalArtists = artistCount,
+                totalLyricists = lyricistCount,
+                totalComposers = composerCount
+            )
+        }
+
             .catch { exception -> emit(SongUiState(isLoading = false, errorMessage = exception.message)) }
             .stateIn(
                 scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000L), // WhileSubscribed বানানটি লক্ষ্য করুন
-                initialValue = SongUiState(isLoading = true)
+                started = SharingStarted.WhileSubscribed(5000L),
+                initialValue = SongUiState(isLoading = true) // প্রাথমিক অবস্থায় লোডিং দেখাবে
             )
 
     // পছন্দের গানের তালিকা
     val favoriteSongs: StateFlow<List<Song>> = repository.favoriteSongs
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000L),
+            initialValue = emptyList()
+        )
+
+    // সব শিল্পীর তালিকা UI State হিসেবে
+    val allArtists: StateFlow<List<String>> = repository.allArtists
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000L),
