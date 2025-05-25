@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -31,10 +32,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.banglagan.data.Song // Song ডেটা ক্লাসের ইম্পোর্ট
-import com.example.banglagan.ui.song.SongUiState // SongUiState এর ইম্পোর্ট
-import com.example.banglagan.ui.song.SongViewModel
-import com.example.banglagan.ui.song.SongViewModelFactory
+import com.example.banglagan.data.SongDao
+import com.example.banglagan.data.SongRepository
+import com.example.banglagan.vi.song.SongUiState // SongUiState এর ইম্পোর্ট
+import com.example.banglagan.vi.song.SongViewModel
+import com.example.banglagan.vi.song.SongViewModelFactory
 import com.example.banglagan.vi.theme.BanglaGanTheme // আপনার থিমের নামের সাথে মিলিয়ে নিন
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 // নেভিগেশন রুটগুলো ডিফাইন করা হচ্ছে
 object AppDestinations {
@@ -167,7 +172,7 @@ fun BanglaGanBottomBar(navController: NavController) {
             icon = {
                 // একটি সাধারণ আইকন ব্যবহার করা যেতে পারে, যেমন মিউজিক নোট
                 BadgedBox(badge = {}) { // BadgedBox এখানে শুধু আইকন দেখানোর জন্য, পরে Badge যোগ করা যেতে পারে
-                     Icon(
+                    Icon(
                         painter = painterResource(id = android.R.drawable.ic_menu_slideshow), // একটি ডিফল্ট অ্যান্ড্রয়েড আইকন
                         contentDescription = "সব গান"
                     )
@@ -229,10 +234,9 @@ fun BanglaGanNavHost(
         }
         composable("${AppDestinations.SONG_DETAIL_ROUTE}/{songId}") { backStackEntry -> // গানের বিস্তারিত স্ক্রিন
             val songId = backStackEntry.arguments?.getString("songId")?.toIntOrNull()
-            // ViewModel থেকে songId দিয়ে গান খুঁজে বের করে SongDetailScreen এ পাস করতে হবে
-            // আপাতত একটি ডামি গান তৈরি করা হচ্ছে
+
             val songDetailFromVM by produceState<Song?>(initialValue = null, songId) {
-                 value = songId?.let { songViewModel.getSongById(it) }
+                value = songId?.let { songViewModel.getSongById(it) }
             }
 
             if (songDetailFromVM != null) {
@@ -243,12 +247,12 @@ fun BanglaGanNavHost(
                     if (songDetailFromVM == null && songId != 0) CircularProgressIndicator() else Text("গান পাওয়া যায়নি।")
                 }
             } else {
-                 Text("অবৈধ গানের আইডি।")
+                Text("অবৈধ গানের আইডি।")
             }
         }
         composable(AppDestinations.FAVORITES_ROUTE) { // পছন্দের গানের তালিকা
             val favoriteSongsState by songViewModel.favoriteSongs.collectAsState()
-             SongListScreen(
+            SongListScreen(
                 uiState = SongUiState(allSongs = favoriteSongsState, isLoading = false), // ফেভারিট গান দিয়ে UiState তৈরি
                 onSongClick = { songId ->
                     navController.navigate("${AppDestinations.SONG_DETAIL_ROUTE}/$songId")
@@ -264,9 +268,9 @@ fun BanglaGanNavHost(
                 onSearchQueryChange = { query -> songViewModel.searchSongs(query) },
                 searchResults = searchResultsState,
                 onSongClick = { songId ->
-                     navController.navigate("${AppDestinations.SONG_DETAIL_ROUTE}/$songId")
+                    navController.navigate("${AppDestinations.SONG_DETAIL_ROUTE}/$songId")
                 },
-                onFavoriteToggle = {song -> songViewModel.toggleFavoriteStatus(song)}
+                onFavoriteToggle = { song -> songViewModel.toggleFavoriteStatus(song) }
             )
         }
     }
@@ -278,25 +282,30 @@ fun BanglaGanNavHost(
 fun HomeScreen(navController: NavController, modifier: Modifier = Modifier) {
     // এখানে বিভিন্ন যুগ বা ক্যাটাগরি দেখানো যেতে পারে
     Column(
-        modifier = modifier.fillMaxSize().padding(16.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp) // আইটেমগুলোর মধ্যে ফাঁকা জায়গা
     ) {
         Text("স্বাগতম!", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // TODO: এখানে বিভিন্ন যুগ বা ক্যাটাগরির জন্য Card বা Button ব্যবহার করা যেতে পারে
-        // উদাহরণ:
-        Card(modifier = Modifier.fillMaxWidth().clickable { navController.navigate(AppDestinations.SONG_LIST_ROUTE) }) {
+        Card(modifier = Modifier
+            .fillMaxWidth()
+            .clickable { navController.navigate(AppDestinations.SONG_LIST_ROUTE) }) {
             Text("সব গান দেখুন", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp))
         }
-        Card(modifier = Modifier.fillMaxWidth().clickable { /* navController.navigate("song_list/charyapad") */ }) {
+        Card(modifier = Modifier
+            .fillMaxWidth()
+            .clickable { /* navController.navigate("song_list/charyapad") */ }) {
             Text("চর্যাপদ", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp))
         }
-         Card(modifier = Modifier.fillMaxWidth().clickable { /* navController.navigate("song_list/modern") */ }) {
+        Card(modifier = Modifier
+            .fillMaxWidth()
+            .clickable { /* navController.navigate("song_list/modern") */ }) {
             Text("আধুনিক গান", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp))
         }
-        // আরও ক্যাটাগরি যোগ করা যেতে পারে
     }
 }
 
@@ -359,7 +368,9 @@ fun SongItem( // একটি গানের আইটেম
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp) // Card এর ছায়া
     ) {
         Row( // ফেভারিট আইকন পাশে আনার জন্য Row ব্যবহার করা হয়েছে
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically, // উল্লম্বভাবে মাঝখানে
             horizontalArrangement = Arrangement.SpaceBetween // আইটেমগুলোর মধ্যে ফাঁকা জায়গা
         ) {
@@ -382,7 +393,7 @@ fun SongItem( // একটি গানের আইটেম
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                 if (!song.genre.isNullOrEmpty()) { // যদি গানের ধরণ থাকে
+                if (!song.genre.isNullOrEmpty()) { // যদি গানের ধরণ থাকে
                     Text(
                         text = "ধরণ: ${song.genre}",
                         style = MaterialTheme.typography.bodySmall
@@ -404,7 +415,9 @@ fun SongItem( // একটি গানের আইটেম
 fun SongDetailScreen(song: Song, songViewModel: SongViewModel, modifier: Modifier = Modifier) {
     // গানের বিস্তারিত তথ্য এখানে দেখানো হবে
     LazyColumn( // লিরিক্স লম্বা হতে পারে, তাই LazyColumn
-        modifier = modifier.fillMaxSize().padding(16.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalAlignment = Alignment.Start // লেখাগুলো বাম দিক থেকে শুরু হবে
     ) {
         item {
@@ -460,7 +473,6 @@ fun SongDetailScreen(song: Song, songViewModel: SongViewModel, modifier: Modifie
                 Text(song.notes, style = MaterialTheme.typography.bodyLarge)
             }
         }
-        // TODO: অডিও/ভিডিও প্লেয়ার যোগ করা যেতে পারে যদি audioUrl/videoUrl থাকে
     }
 }
 
@@ -473,7 +485,9 @@ fun SearchScreen(
     onFavoriteToggle: (Song) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = modifier
+        .fillMaxSize()
+        .padding(16.dp)) {
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
@@ -521,14 +535,15 @@ fun EmptySongListScreen(modifier: Modifier = Modifier) { // গানের ত�
     ) {
         Text("কোনো গান পাওয়া যায়নি।", style = MaterialTheme.typography.headlineSmall)
         Text("কিছু গান যোগ করুন অথবা ডাটাবেস সিঙ্ক করুন!", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top=4.dp))
-        // TODO: গান যোগ করার জন্য একটি বাটন বা অন্য কোনো অপশন যোগ করা যেতে পারে
     }
 }
 
 @Composable
 fun ErrorScreen(message: String, modifier: Modifier = Modifier) { // কোনো সমস্যা হলে
     Column(
-        modifier = modifier.fillMaxSize().padding(16.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -538,6 +553,48 @@ fun ErrorScreen(message: String, modifier: Modifier = Modifier) { // কোন�
 }
 
 // --- প্রিভিউ ফাংশন ---
+
+// SongDao-এর সব মেথডসহ FakeSongDao
+private class FakeSongDao : SongDao {
+    override fun getAllSongs(): Flow<List<Song>> = flowOf(listOf(
+        Song(id = 1, title = "আমার সোনার বাংলা", artistName = "রবীন্দ্রনাথ ঠাকুর", era = "আধুনিক", genre = "রবীন্দ্রসঙ্গীত", isFavorite = true),
+        Song(id = 2, title = "কফি হাউসের সেই আড্ডাটা", artistName = "মান্না দে", genre = "আধুনিক বাংলা")
+    ))
+
+    override fun getFavoriteSongs(): Flow<List<Song>> = flowOf(listOf(
+        Song(id = 1, title = "আমার সোনার বাংলা", artistName = "রবীন্দ্রনাথ ঠাকুর", era = "আধুনিক", genre = "রবীন্দ্রসঙ্গীত", isFavorite = true)
+    ))
+
+    // প্রিভিউয়ের জন্য একটি নির্দিষ্ট গান রিটার্ন করবে
+    override fun getSongById(songId: Int): Flow<Song?> = flowOf(
+        Song(
+            id = 1,
+            title = "কফি হাউসের সেই আড্ডাটা",
+            artistName = "মান্না দে",
+            albumName = "Single",
+            lyricist = "গৌরীপ্রসন্ন মজুমদার",
+            composer = "সুপর্ণকান্তি ঘোষ",
+            era = "আধুনিক",
+            genre = "আধুনিক বাংলা",
+            releaseYear = 1983,
+            lyrics = "কফি হাউসের সেই আড্ডাটা আজ আর নেই,\nকোথায় হারিয়ে গেল সোনালী বিকেলগুলো সেই...",
+            isFavorite = true,
+            notes = "একটি কালজয়ী জনপ্রিয় বাংলা গান।"
+        )
+    )
+
+    override suspend fun insertSong(song: Song) {}
+    override suspend fun insertAllSongs(songs: List<Song>) {}
+    override suspend fun updateSong(song: Song) {}
+    override suspend fun deleteSong(song: Song) {}
+    override fun searchSongs(query: String): Flow<List<Song>> = flowOf(emptyList())
+
+    // এই দুটি মেথড যোগ করতে হবে
+    override fun getSongsByArtist(artistName: String): Flow<List<Song>> = flowOf(emptyList())
+    override fun getSongsByGenre(genreName: String): Flow<List<Song>> = flowOf(emptyList())
+}
+
+
 @Preview(showBackground = true, name = "Song Item Preview")
 @Composable
 fun SongItemPreview() {
@@ -558,7 +615,6 @@ fun HomeScreenPreview() {
     }
 }
 
-// SongDetailScreen এর জন্য প্রিভিউ
 @Preview(showBackground = true, name = "Song Detail Preview")
 @Composable
 fun SongDetailScreenPreview() {
@@ -573,20 +629,14 @@ fun SongDetailScreenPreview() {
             era = "আধুনিক",
             genre = "আধুনিক বাংলা",
             releaseYear = 1983,
-            lyrics = "কফি হাউসের সেই আড্ডাটা আজ আর নেই,\nকোথায় হারিয়ে গেল সোনালী বিকেলগুলো সেই...",
+            lyrics = "কফি হাউসের সেই আড্ডাটা আজ আর নেই,\nকোথায় হারিয়ে গেল সোনালী বিকেলগুলো সেই...",
             isFavorite = true,
-            notes = "একটি কালজয়ী জনপ্রিয় বাংলা গান।"
+            notes = "একটি কালজয়ী জনপ্রিয় বাংলা গান।"
         )
-        // একটি ডামি ViewModel তৈরি করা হচ্ছে প্রিভিউয়ের জন্য
-        val dummyApplication = LocalContext.current.applicationContext as? BanglaGanApplication
-        val dummyViewModel: SongViewModel = if (dummyApplication != null) {
-            viewModel(factory = SongViewModelFactory(dummyApplication.repository))
-        } else {
-            // একটি সম্পূর্ণ ডামি ViewModel যদি Application কাস্ট না করা যায়
-            object : SongViewModel(SongRepository(AppDatabase.getDatabase(LocalContext.current, CoroutineScope(Dispatchers.Main)).songDao())) {
-                // এখানে প্রয়োজনীয় ফাংশন ওভাররাইড করা যেতে পারে
-            }
-        }
+
+        // ডামি ViewModel তৈরি (সরাসরি ক্লাস ব্যবহার করে)
+        val dummyViewModel = SongViewModel(SongRepository(FakeSongDao()))
+
         SongDetailScreen(song = previewSong, songViewModel = dummyViewModel)
     }
 }

@@ -23,13 +23,16 @@ android {
             useSupportLibrary = true
         }
     }
-    builbuildTypesdTypes {
-        release {
+    buildTypes {
+        getByName("release") { // getByName("release") ব্যবহার করা একটি সাধারণ এবং সঠিক পদ্ধতি
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        getByName("debug") { // debug build type ও সাধারণত থাকে
+            // debug specific configurations
         }
     }
     compileOptions {
@@ -60,19 +63,19 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
-    implementation(libs.com.google.android.material.material) // Material Components for Android
+    implementation(libs.google.material) // Material Components for Android
 
     // ViewModel for Compose
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     // Room dependencies
-    val roomVersion = "2.6.1"
+    val roomVersion = "2.7.1"
     implementation("androidx.room:room-runtime:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
 
     // Navigation Compose
-    implementation("androidx.navigation:navigation-compose:2.7.7") // সর্বশেষ ভার্সন ব্যবহার করুন
+    implementation("androidx.navigation:navigation-compose:2.9.0") // সর্বশেষ ভার্সন ব্যবহার করুন
 
     // Glance dependencies (যদি ব্যবহার করতে চান)
     // implementation("androidx.glance:glance:1.1.1")
