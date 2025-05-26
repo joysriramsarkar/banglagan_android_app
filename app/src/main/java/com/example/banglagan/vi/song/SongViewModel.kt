@@ -129,6 +129,13 @@ class SongViewModel(private val repository: SongRepository) : ViewModel() {
     fun searchSongs(query: String) {
         _currentSearchQuery.value = query
     }
+
+    // নির্দিষ্ট শিল্পীর গান পাওয়ার জন্য
+    fun getSongsByArtist(artistName: String): Flow<List<Song>> {
+        return repository.getSongsByArtist(artistName)
+    }
+
+
 }
 
 // ViewModel Factory

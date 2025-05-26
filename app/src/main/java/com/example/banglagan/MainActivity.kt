@@ -1,22 +1,26 @@
-@file:OptIn(ExperimentalMaterial3Api::class) // Opt-in for ExperimentalMaterial3Api
+@file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.example.banglagan // আপনার প্যাকেজের নামের সাথে মিলিয়ে নিন
+package com.example.banglagan
 
 import android.os.Bundle
+import android.util.Log // <-- Log ব্যবহারের জন্য ইম্পোর্ট
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.aspectRatio // এই ইম্পোর্টগুলো যোগ করুন
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.layout.aspectRatio
+// LazyVerticalGrid আর প্রয়োজন নেই যদি আমরা Column/Row ব্যবহার করি গ্রিডের জন্য
+// import androidx.compose.foundation.lazy.grid.GridCells
+// import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Home // Home আইকন ইম্পোর্ট
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,31 +33,39 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.banglagan.data.Song // Song ডেটা ক্লাসের ইম্পোর্ট
+import com.example.banglagan.data.Song
 import com.example.banglagan.data.SongDao
 import com.example.banglagan.data.SongRepository
 import com.example.banglagan.utils.toBanglaString
-import com.example.banglagan.vi.song.SongUiState // SongUiState এর ইম্পোর্ট
+import com.example.banglagan.vi.song.SongUiState
 import com.example.banglagan.vi.song.SongViewModel
 import com.example.banglagan.vi.song.SongViewModelFactory
-import com.example.banglagan.vi.theme.BanglaGanTheme // আপনার থিমের নামের সাথে মিলিয়ে নিন
+import com.example.banglagan.vi.theme.BanglaGanTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
-// নেভিগেশন রুটগুলো ডিফাইন করা হচ্ছে
 object AppDestinations {
-    const val HOME_ROUTE = "home" // হোম স্ক্রিনের রুট
-    const val SONG_LIST_ROUTE = "song_list" // গানের তালিকা স্ক্রিনের রুট
-    const val SONG_DETAIL_ROUTE = "song_detail" // গানের বিস্তারিত স্ক্রিনের রুট, songId সহ
-    const val SEARCH_ROUTE = "search" // সার্চ স্ক্রিনের রুট
-    const val FAVORITES_ROUTE = "favorites" // পছন্দের গানের তালিকা স্ক্রিনের রুট
+    const val HOME_ROUTE = "home"
+    const val SONG_LIST_ROUTE = "song_list"
+
+    // SONG_DETAIL_ROUTE এর জন্য নতুন এবং সঠিক সংজ্ঞা
+    const val SONG_DETAIL_ROUTE_BASE = "song_detail"
+    const val SONG_DETAIL_ARG_SONG_ID = "songId"
+    const val SONG_DETAIL_ROUTE_PATTERN = "$SONG_DETAIL_ROUTE_BASE/{$SONG_DETAIL_ARG_SONG_ID}"
+    fun songDetailRoute(songId: Int) = "$SONG_DETAIL_ROUTE_BASE/$songId"
+
+    const val SEARCH_ROUTE = "search"
+    const val FAVORITES_ROUTE = "favorites"
     const val ARTIST_LIST_ROUTE = "artist_list"
+    const val ARTIST_SONGS_ROUTE_BASE = "artist_songs"
+    const val ARTIST_SONGS_ARG_ARTIST_NAME = "artistName"
+    const val ARTIST_SONGS_ROUTE_PATTERN = "$ARTIST_SONGS_ROUTE_BASE/{$ARTIST_SONGS_ARG_ARTIST_NAME}"
+    fun artistSongsRoute(artistName: String) = "$ARTIST_SONGS_ROUTE_BASE/$artistName"
 }
 
 class MainActivity : ComponentActivity() {
@@ -61,7 +73,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             BanglaGanTheme {
-                // BanglaGanApplication থেকে repository অ্যাক্সেস করার চেষ্টা
                 val application = LocalContext.current.applicationContext as? BanglaGanApplication
                 if (application != null) {
                     val songViewModel: SongViewModel = viewModel(
@@ -69,8 +80,8 @@ class MainActivity : ComponentActivity() {
                     )
                     BanglaGanApp(songViewModel = songViewModel)
                 } else {
-                    // ফলব্যাক UI যদি Application ক্লাস কাস্ট করা না যায়
-                    ErrorScreen("Application context could not be cast to BanglaGanApplication. Check your Application class and Manifest.")
+                    // ErrorScreen Composable ফাংশনটি নিচে ডিফাইন করা আছে
+                    ErrorScreen("Application context is not BanglaGanApplication. Check AndroidManifest.xml and Application class.")
                 }
             }
         }
@@ -80,39 +91,46 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BanglaGanApp(songViewModel: SongViewModel) {
-    val navController = rememberNavController() // NavController তৈরি করা হচ্ছে
+    val navController = rememberNavController()
     val currentBackStack by navController.currentBackStackEntryAsState()
-    val currentRoute = currentBackStack?.destination?.route // বর্তমান রুট
+    val currentRoute = currentBackStack?.destination?.route
 
     Scaffold(
         topBar = {
-            // শুধুমাত্র SONG_DETAIL_ROUTE ছাড়া অন্য রুটে সার্চ আইকন দেখাবে
-            val showSearchIcon = currentRoute != "${AppDestinations.SONG_DETAIL_ROUTE}/{songId}"
+            val showSearchIcon = !(currentRoute?.startsWith(AppDestinations.SONG_DETAIL_ROUTE_BASE) == true)
+
             BanglaGanTopAppBar(
-                // বর্তমান রুটের উপর ভিত্তি করে টপবারের টাইটেল সেট করা হচ্ছে
-                title = when (currentRoute) {
-                    AppDestinations.HOME_ROUTE -> "বাংলা গানের সংগ্রহ"
-                    AppDestinations.SONG_LIST_ROUTE -> "সব গান"
-                    AppDestinations.FAVORITES_ROUTE -> "পছন্দের গান"
-                    AppDestinations.SEARCH_ROUTE -> "গান খুঁজুন"
-                    AppDestinations.ARTIST_LIST_ROUTE -> "শিল্পীর তালিকা"
-                    "${AppDestinations.SONG_DETAIL_ROUTE}/{songId}" -> "গানের বিবরণ" // এটি পরিবর্তন হতে পারে
+                title = when {
+                    currentRoute == AppDestinations.HOME_ROUTE -> "বাংলা গানের সংগ্রহ"
+                    currentRoute == AppDestinations.SONG_LIST_ROUTE -> "সব গান"
+                    currentRoute == AppDestinations.FAVORITES_ROUTE -> "পছন্দের গান"
+                    currentRoute == AppDestinations.SEARCH_ROUTE -> "গান খুঁজুন"
+                    currentRoute == AppDestinations.ARTIST_LIST_ROUTE -> "শিল্পীর তালিকা"
+                    currentRoute?.startsWith(AppDestinations.ARTIST_SONGS_ROUTE_BASE) == true -> {
+                        val artistNameFromRoute = navController.currentBackStackEntry?.arguments?.getString(AppDestinations.ARTIST_SONGS_ARG_ARTIST_NAME)
+                        if (!artistNameFromRoute.isNullOrEmpty()) {
+                            "${artistNameFromRoute}-এর গান"
+                        } else {
+                            "শিল্পীর গান"
+                        }
+                    }
+                    currentRoute?.startsWith(AppDestinations.SONG_DETAIL_ROUTE_BASE) == true -> "গানের বিবরণ"
                     else -> "বাংলা গান"
                 },
                 canNavigateBack = navController.previousBackStackEntry != null,
-                navigateUp = { navController.navigateUp() }, // Back Navigation
+                navigateUp = { navController.navigateUp() },
                 showSearchIcon = showSearchIcon,
                 onSearchClick = { navController.navigate(AppDestinations.SEARCH_ROUTE) }
             )
         },
         bottomBar = {
-            BanglaGanBottomBar(navController = navController) // Bottom Navigation Bar
+            BanglaGanBottomBar(navController = navController)
         }
     ) { innerPadding ->
-        BanglaGanNavHost( // NavHost যেখানে বিভিন্ন স্ক্রিন লোড হবে
+        BanglaGanNavHost(
             navController = navController,
             songViewModel = songViewModel,
-            modifier = Modifier.padding(innerPadding) // TopBar ও BottomBar এর জন্য প্যাডিং
+            modifier = Modifier.padding(innerPadding)
         )
     }
 }
@@ -128,29 +146,23 @@ fun BanglaGanTopAppBar(
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
-        title = { Text(text = title) },
+        title = { Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis) }, // maxLines ও overflow যোগ করা হলো
         modifier = modifier,
         navigationIcon = {
-            if (canNavigateBack) { // যদি পেছনে যাওয়ার পথ থাকে, তাহলে Back আইকন দেখানো হবে
+            if (canNavigateBack) {
                 IconButton(onClick = navigateUp) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = "পেছনে যান"
-                    )
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "পেছনে যান")
                 }
             }
         },
         actions = {
-            if (showSearchIcon) { // যদি সার্চ আইকন দেখানোর পারমিশন থাকে
+            if (showSearchIcon) {
                 IconButton(onClick = onSearchClick) {
-                    Icon(
-                        imageVector = Icons.Filled.Search,
-                        contentDescription = "সার্চ করুন"
-                    )
+                    Icon(Icons.Filled.Search, contentDescription = "সার্চ করুন")
                 }
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors( // টপবারের রঙ
+        colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             titleContentColor = MaterialTheme.colorScheme.primary,
         )
@@ -158,54 +170,40 @@ fun BanglaGanTopAppBar(
 }
 
 @Composable
-fun BanglaGanBottomBar(navController: NavController) {
+fun BanglaGanBottomBar(navController: NavHostController) {
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     NavigationBar {
-        NavigationBarItem( // হোম আইটেম
+        NavigationBarItem(
             icon = { Icon(Icons.Filled.Home, contentDescription = "হোম") },
             label = { Text("হোম") },
             selected = currentRoute == AppDestinations.HOME_ROUTE,
             onClick = {
                 navController.navigate(AppDestinations.HOME_ROUTE) {
-                    popUpTo(navController.graph.startDestinationId) { // স্ট্যাকের শুরু পর্যন্ত পপ আপ
-                        saveState = true
-                    }
-                    launchSingleTop = true // একই স্ক্রিন একাধিকবার স্ট্যাকে না আসার জন্য
-                    restoreState = true // আগের স্টেট রিস্টোর করার জন্য
-                }
-            }
-        )
-        NavigationBarItem( // সব গান আইটেম
-            icon = {
-                // একটি সাধারণ আইকন ব্যবহার করা যেতে পারে, যেমন মিউজিক নোট
-                BadgedBox(badge = {}) { // BadgedBox এখানে শুধু আইকন দেখানোর জন্য, পরে Badge যোগ করা যেতে পারে
-                    Icon(
-                        painter = painterResource(id = android.R.drawable.ic_menu_slideshow), // একটি ডিফল্ট অ্যান্ড্রয়েড আইকন
-                        contentDescription = "সব গান"
-                    )
-                }
-            },
-            label = { Text("সব গান") },
-            selected = currentRoute == AppDestinations.SONG_LIST_ROUTE,
-            onClick = {
-                navController.navigate(AppDestinations.SONG_LIST_ROUTE) {
-                    popUpTo(navController.graph.startDestinationId) {
-                        saveState = true
-                    }
+                    popUpTo(navController.graph.startDestinationId) { saveState = true }
                     launchSingleTop = true
                     restoreState = true
                 }
             }
         )
-        NavigationBarItem( // পছন্দের গান আইটেম
+        NavigationBarItem(
+            icon = { BadgedBox(badge = {}) { Icon(painterResource(id = android.R.drawable.ic_menu_slideshow), contentDescription = "সব গান") } },
+            label = { Text("সব গান") },
+            selected = currentRoute == AppDestinations.SONG_LIST_ROUTE,
+            onClick = {
+                navController.navigate(AppDestinations.SONG_LIST_ROUTE) {
+                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+        )
+        NavigationBarItem(
             icon = { Icon(Icons.Filled.Favorite, contentDescription = "পছন্দের গান") },
             label = { Text("পছন্দের") },
             selected = currentRoute == AppDestinations.FAVORITES_ROUTE,
             onClick = {
                 navController.navigate(AppDestinations.FAVORITES_ROUTE) {
-                    popUpTo(navController.graph.startDestinationId) {
-                        saveState = true
-                    }
+                    popUpTo(navController.graph.startDestinationId) { saveState = true }
                     launchSingleTop = true
                     restoreState = true
                 }
@@ -221,107 +219,118 @@ fun BanglaGanNavHost(
     songViewModel: SongViewModel,
     modifier: Modifier = Modifier
 ) {
-    NavHost( // নেভিগেশন গ্রাফের হোস্ট
+    NavHost(
         navController = navController,
-        startDestination = AppDestinations.HOME_ROUTE, // অ্যাপ শুরু হবে হোম স্ক্রিন থেকে
+        startDestination = AppDestinations.HOME_ROUTE,
         modifier = modifier
     ) {
-        composable(AppDestinations.HOME_ROUTE) { // হোম স্ক্রিনের জন্য Composable
-            val songUiState by songViewModel.songUiState.collectAsState() // ViewModel থেকে UiState সংগ্রহ করুন
-            HomeScreen(
-                uiState = songUiState, // HomeScreen-এ UiState পাস করুন
-                navController = navController
-            )
+        composable(AppDestinations.HOME_ROUTE) {
+            val songUiState by songViewModel.songUiState.collectAsState()
+            HomeScreen(uiState = songUiState, navController = navController)
         }
-        composable(AppDestinations.SONG_LIST_ROUTE) { // গানের তালিকা স্ক্রিনের জন্য Composable
+        composable(AppDestinations.SONG_LIST_ROUTE) {
             val songUiState by songViewModel.songUiState.collectAsState()
             SongListScreen(
                 uiState = songUiState,
-                onSongClick = { songId -> // কোনো গানে ক্লিক করলে
-                    navController.navigate("${AppDestinations.SONG_DETAIL_ROUTE}/$songId") // বিস্তারিত স্ক্রিনে যাবে
-                },
-                onFavoriteToggle = { song -> songViewModel.toggleFavoriteStatus(song) } // ফেভারিট টগল
+                onSongClick = { songId -> navController.navigate(AppDestinations.songDetailRoute(songId)) },
+                onFavoriteToggle = { song -> songViewModel.toggleFavoriteStatus(song) }
             )
         }
-        composable("${AppDestinations.SONG_DETAIL_ROUTE}/{songId}") { backStackEntry -> // গানের বিস্তারিত স্ক্রিন
-            val songId = backStackEntry.arguments?.getString("songId")?.toIntOrNull()
-
-            val songDetailFromVM by produceState<Song?>(initialValue = null, songId) {
-                value = songId?.let { songViewModel.getSongById(it) }
+        composable(AppDestinations.SONG_DETAIL_ROUTE_PATTERN) { backStackEntry ->
+            val songId = backStackEntry.arguments?.getString(AppDestinations.SONG_DETAIL_ARG_SONG_ID)?.toIntOrNull()
+            val songDetailFromVM by produceState<Song?>(initialValue = null, key1 = songId) {
+                value = songId?.let {
+                    Log.d("BanglaGanNavHost", "Loading song detail for ID: $it")
+                    val song = songViewModel.getSongById(it)
+                    Log.d("BanglaGanNavHost", "Song detail loaded for ID $it: ${song?.title}")
+                    song
+                }
             }
 
             if (songDetailFromVM != null) {
-                SongDetailScreen(song = songDetailFromVM!!, songViewModel = songViewModel)
+                SongDetailScreen(
+                    song = songDetailFromVM!!,
+                    songViewModel = songViewModel,
+                    onArtistNameClick = { artistName ->
+                        navController.navigate(AppDestinations.artistSongsRoute(artistName.trim()))
+                    }
+                )
             } else if (songId != null) {
-                // গান লোড হচ্ছে বা পাওয়া যায়নি
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    if (songDetailFromVM == null && songId != 0) CircularProgressIndicator() else Text("গান পাওয়া যায়নি।")
+                    CircularProgressIndicator()
                 }
             } else {
                 Text("অবৈধ গানের আইডি।")
             }
         }
-        composable(AppDestinations.FAVORITES_ROUTE) { // পছন্দের গানের তালিকা
+        composable(AppDestinations.FAVORITES_ROUTE) {
             val favoriteSongsState by songViewModel.favoriteSongs.collectAsState()
             SongListScreen(
-                uiState = SongUiState(allSongs = favoriteSongsState, isLoading = false), // ফেভারিট গান দিয়ে UiState তৈরি
-                onSongClick = { songId ->
-                    navController.navigate("${AppDestinations.SONG_DETAIL_ROUTE}/$songId")
-                },
+                uiState = SongUiState(allSongs = favoriteSongsState, isLoading = false),
+                onSongClick = { songId -> navController.navigate(AppDestinations.songDetailRoute(songId)) },
                 onFavoriteToggle = { song -> songViewModel.toggleFavoriteStatus(song) }
             )
         }
-        composable(AppDestinations.SEARCH_ROUTE) { // সার্চ স্ক্রিন
+        composable(AppDestinations.SEARCH_ROUTE) {
             val searchResultsState by songViewModel.searchResults.collectAsState()
             val currentSearchQueryState by songViewModel.currentSearchQuery.collectAsState()
             SearchScreen(
                 searchQuery = currentSearchQueryState,
                 onSearchQueryChange = { query -> songViewModel.searchSongs(query) },
                 searchResults = searchResultsState,
-                onSongClick = { songId ->
-                    navController.navigate("${AppDestinations.SONG_DETAIL_ROUTE}/$songId")
-                },
+                onSongClick = { songId -> navController.navigate(AppDestinations.songDetailRoute(songId)) },
                 onFavoriteToggle = { song -> songViewModel.toggleFavoriteStatus(song) }
             )
         }
-        composable(AppDestinations.ARTIST_LIST_ROUTE) { // শিল্পীর তালিকা স্ক্রিন
+        composable(AppDestinations.ARTIST_LIST_ROUTE) {
             val artists by songViewModel.allArtists.collectAsState()
             ArtistListScreen(
                 artists = artists,
                 onArtistClick = { artistName ->
-                    // আপাতত, আমরা শিল্পীর নামে সার্চ স্ক্রিনে পাঠাতে পারি
-                    // পরে আমরা নির্দিষ্ট শিল্পীর গানের তালিকা দেখাব
-                    navController.navigate("${AppDestinations.SEARCH_ROUTE}?query=${artistName.trim()}")
+                    navController.navigate(AppDestinations.artistSongsRoute(artistName.trim()))
                 }
+            )
+        }
+        composable(AppDestinations.ARTIST_SONGS_ROUTE_PATTERN) { backStackEntry ->
+            val artistName = backStackEntry.arguments?.getString(AppDestinations.ARTIST_SONGS_ARG_ARTIST_NAME) ?: ""
+            val songsByArtist by songViewModel.getSongsByArtist(artistName).collectAsState(initial = emptyList())
+
+            SongListScreen(
+                uiState = SongUiState(allSongs = songsByArtist, isLoading = false),
+                onSongClick = { songId -> navController.navigate(AppDestinations.songDetailRoute(songId)) },
+                onFavoriteToggle = { song -> songViewModel.toggleFavoriteStatus(song) }
             )
         }
     }
 }
 
-// --- নতুন স্ক্রিনগুলোর কঙ্কাল ---
-
 @Composable
 fun HomeScreen(
-    uiState: SongUiState, // SongUiState গ্রহণ করুন
-    navController: NavController,
+    uiState: SongUiState,
+    navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()), // এটি থাকবে
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp) // আইটেমগুলোর মধ্যে ফাঁকা জায়গা
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("স্বাগতম!", style = MaterialTheme.typography.headlineMedium)
 
-        // --- পরিসংখ্যান বিভাগ ---
         Text("এক নজরে ডেটাবেস", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
-        StatsGrid(uiState = uiState) // পরিসংখ্যান দেখানোর গ্রিড
+        StatsSection(uiState = uiState, modifier = Modifier.fillMaxWidth()) // নতুন ফাংশন
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- অন্যান্য বাটন ---
+        Text("আরও অন্বেষণ করুন", style = MaterialTheme.typography.titleLarge)
+        Spacer(modifier = Modifier.height(8.dp))
+        ExploreButtonsSection(navController = navController, modifier = Modifier.fillMaxWidth()) // নতুন ফাংশন
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Text("আরও দেখুন", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
         Card(modifier = Modifier
@@ -334,27 +343,92 @@ fun HomeScreen(
             .clickable { navController.navigate(AppDestinations.FAVORITES_ROUTE) }) {
             Text("পছন্দের গান", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp))
         }
-        // আপনি চাইলে এখানে আরও বাটন যোগ করতে পারেন
     }
 }
 
 @Composable
-fun StatsGrid(uiState: SongUiState, modifier: Modifier = Modifier) {
-    // LazyVerticalGrid ব্যবহার করে গ্রিড তৈরি করা হচ্ছে
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2), // দুটি কলাম থাকবে
+fun StatsSection(uiState: SongUiState, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(modifier = Modifier.weight(1f)) {
+                StatsCard(label = "মোট গান", count = uiState.totalSongs)
+            }
+            Box(modifier = Modifier.weight(1f)) {
+                StatsCard(label = "মোট শিল্পী", count = uiState.totalArtists)
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(modifier = Modifier.weight(1f)) {
+                StatsCard(label = "মোট গীতিকার", count = uiState.totalLyricists)
+            }
+            Box(modifier = Modifier.weight(1f)) {
+                StatsCard(label = "মোট সুরকার", count = uiState.totalComposers)
+            }
+        }
+    }
+}
+
+@Composable
+fun ExploreButtonsSection(navController: NavHostController, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(modifier = Modifier.weight(1f)) {
+                ExploreButton(
+                    label = "গান",
+                    onClick = { navController.navigate(AppDestinations.SEARCH_ROUTE) }
+                )
+            }
+            Box(modifier = Modifier.weight(1f)) {
+                ExploreButton(
+                    label = "শিল্পী",
+                    onClick = {
+                        Log.d("BanglaGanApp", "শিল্পী খুঁজুন button clicked from HomeScreen")
+                        navController.navigate(AppDestinations.ARTIST_LIST_ROUTE)
+                    }
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(modifier = Modifier.weight(1f)) {
+                ExploreButton(
+                    label = "গীতিকার",
+                    onClick = { navController.navigate(AppDestinations.SEARCH_ROUTE) } // TODO: গীতিকার তালিকা পাতায় যাবে
+                )
+            }
+            Box(modifier = Modifier.weight(1f)) {
+                ExploreButton(
+                    label = "সুরকার",
+                    onClick = { navController.navigate(AppDestinations.SEARCH_ROUTE) } // TODO: সুরকার তালিকা পাতায় যাবে
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ExploreButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(300.dp), // গ্রিডের একটি নির্দিষ্ট উচ্চতা দিন বা প্রয়োজন অনুযায়ী পরিবর্তন করুন
-        horizontalArrangement = Arrangement.spacedBy(16.dp), // কলামের মধ্যে ফাঁকা জায়গা
-        verticalArrangement = Arrangement.spacedBy(16.dp), // সারির মধ্যে ফাঁকা জায়গা
-        contentPadding = PaddingValues(8.dp)
+            .height(80.dp)
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        item { StatsCard(label = "মোট গান", count = uiState.totalSongs) }
-        item { StatsCard(label = "মোট শিল্পী", count = uiState.totalArtists) }
-        item { StatsCard(label = "মোট গীতিকার", count = uiState.totalLyricists) }
-        item { StatsCard(label = "মোট সুরকার", count = uiState.totalComposers) }
-        // আপনি চাইলে এখানে আরও কার্ড যোগ করতে পারেন
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Search,
+                contentDescription = label,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(text = label, style = MaterialTheme.typography.titleMedium)
+        }
     }
 }
 
@@ -362,7 +436,8 @@ fun StatsGrid(uiState: SongUiState, modifier: Modifier = Modifier) {
 fun StatsCard(label: String, count: Int, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier
-            .aspectRatio(1f), // কার্ডটিকে বর্গাকার করার চেষ্টা
+            .fillMaxWidth() // এটি ওজন (weight) অনুযায়ী জায়গা নেবে
+            .aspectRatio(1.5f), // উচ্চতা/প্রস্থ অনুপাত, প্রয়োজন অনুযায়ী পরিবর্তন করুন
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -381,24 +456,24 @@ fun StatsCard(label: String, count: Int, modifier: Modifier = Modifier) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center // লেখা মাঝখানে দেখানোর জন্য
+                textAlign = TextAlign.Center
             )
         }
     }
 }
 
 @Composable
-fun SongListScreen( // গানের তালিকা দেখানোর স্ক্রিন
+fun SongListScreen(
     uiState: SongUiState,
     onSongClick: (Int) -> Unit,
     onFavoriteToggle: (Song) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (uiState.isLoading && uiState.allSongs.isEmpty()) { // যদি লোডিং চলে এবং কোনো গান না থাকে
+    if (uiState.isLoading && uiState.allSongs.isEmpty()) {
         LoadingScreen(modifier = modifier.fillMaxSize())
-    } else if (uiState.allSongs.isEmpty() && !uiState.isLoading) { // যদি লোডিং শেষ এবং তালিকা খালি
+    } else if (uiState.allSongs.isEmpty() && !uiState.isLoading) {
         EmptySongListScreen(modifier = modifier.fillMaxSize())
-    } else { // গান থাকলে তালিকা দেখানো হবে
+    } else {
         SongList(
             songs = uiState.allSongs,
             onSongClick = onSongClick,
@@ -410,75 +485,75 @@ fun SongListScreen( // গানের তালিকা দেখানোর 
 
 
 @Composable
-fun SongList( // গানের তালিকা
+fun SongList(
     songs: List<Song>,
-    onSongClick: (Int) -> Unit, // এখন id পাস করবে গানে ক্লিক করলে
+    onSongClick: (Int) -> Unit,
     onFavoriteToggle: (Song) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn( // স্ক্রলযোগ্য তালিকা
+    LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), // কন্টেন্টের জন্য প্যাডিং
-        verticalArrangement = Arrangement.spacedBy(8.dp) // আইটেমগুলোর মধ্যে ফাঁকা জায়গা
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(songs, key = { song -> song.id }) { song -> // প্রতিটি গানের জন্য একটি আইটেম
+        items(songs, key = { song -> song.id }) { song ->
             SongItem(
                 song = song,
                 onFavoriteToggle = { onFavoriteToggle(song) },
-                onClick = { onSongClick(song.id) } // গানে ক্লিক করলে কল হবে
+                onClick = { onSongClick(song.id) }
             )
         }
     }
 }
 
 @Composable
-fun SongItem( // একটি গানের আইটেম
+fun SongItem(
     song: Song,
     onFavoriteToggle: () -> Unit,
-    onClick: () -> Unit, // onClick প্যারামিটার যোগ করা হয়েছে
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick) // Card-কে ক্লিকযোগ্য করা হয়েছে
-            .padding(vertical = 4.dp), // Card এর উপরে ও নিচে প্যাডিং
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp) // Card এর ছায়া
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row( // ফেভারিট আইকন পাশে আনার জন্য Row ব্যবহার করা হয়েছে
+        Row(
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically, // উল্লম্বভাবে মাঝখানে
-            horizontalArrangement = Arrangement.SpaceBetween // আইটেমগুলোর মধ্যে ফাঁকা জায়গা
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(modifier = Modifier.weight(1f)) { // লেখাগুলো যেন যথেষ্ট জায়গা পায়
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = song.title,
                     style = MaterialTheme.typography.titleLarge,
-                    maxLines = 1, // এক লাইনে দেখাবে
-                    overflow = TextOverflow.Ellipsis // লেখা বেশি হলে ... দেখাবে
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "শিল্পী: ${song.artistName ?: "অজানা"}", // শিল্পীর নাম না থাকলে "অজানা" দেখাবে
+                    text = "শিল্পী: ${song.artistName ?: "অজানা"}",
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (!song.era.isNullOrEmpty()) { // যদি যুগ থাকে
+                if (!song.era.isNullOrEmpty()) {
                     Text(
                         text = "যুগ: ${song.era}",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                if (!song.genre.isNullOrEmpty()) { // যদি গানের ধরণ থাকে
+                if (!song.genre.isNullOrEmpty()) {
                     Text(
                         text = "ধরণ: ${song.genre}",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
-            IconButton(onClick = onFavoriteToggle) { // ফেভারিট বাটন
+            IconButton(onClick = onFavoriteToggle) {
                 Icon(
                     imageVector = if (song.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                     contentDescription = if (song.isFavorite) "পছন্দ থেকে সরান" else "পছন্দ করুন",
@@ -490,13 +565,17 @@ fun SongItem( // একটি গানের আইটেম
 }
 
 @Composable
-fun SongDetailScreen(song: Song, songViewModel: SongViewModel, modifier: Modifier = Modifier) {
-    // গানের বিস্তারিত তথ্য এখানে দেখানো হবে
-    LazyColumn( // লিরিক্স লম্বা হতে পারে, তাই LazyColumn
+fun SongDetailScreen(
+    song: Song,
+    songViewModel: SongViewModel,
+    onArtistNameClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp),
-        horizontalAlignment = Alignment.Start // লেখাগুলো বাম দিক থেকে শুরু হবে
+        horizontalAlignment = Alignment.Start
     ) {
         item {
             Row(
@@ -516,7 +595,26 @@ fun SongDetailScreen(song: Song, songViewModel: SongViewModel, modifier: Modifie
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        item { Text("শিল্পী: ${song.artistName ?: "অজানা"}", style = MaterialTheme.typography.titleMedium) }
+        item {
+            val artistName = song.artistName ?: "অজানা"
+            Row(
+                modifier = Modifier.clickable(enabled = song.artistName != null) {
+                    if (song.artistName != null) {
+                        Log.d("BanglaGanApp", "Artist name '${song.artistName}' clicked from SongDetailScreen")
+                        onArtistNameClick(song.artistName)
+                    }
+                }
+            ) {
+                Text("শিল্পী: ", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = artistName,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        color = if (song.artistName != null) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                    )
+                )
+            }
+        }
+
         if (!song.albumName.isNullOrEmpty()) {
             item { Text("অ্যালবাম: ${song.albumName}", style = MaterialTheme.typography.bodyLarge) }
         }
@@ -555,6 +653,38 @@ fun SongDetailScreen(song: Song, songViewModel: SongViewModel, modifier: Modifie
 }
 
 @Composable
+fun ArtistListScreen(
+    artists: List<String>,
+    onArtistClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Log.d("BanglaGanApp", "ArtistListScreen displayed with ${artists.size} artists.")
+    if (artists.isEmpty()) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("কোনো শিল্পী পাওয়া যায়নি।")
+        }
+    } else {
+        LazyColumn(modifier = modifier.padding(16.dp)) {
+            items(artists) { artist ->
+                Text(
+                    text = artist,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            Log.d("BanglaGanApp", "Artist '$artist' clicked in ArtistListScreen")
+                            onArtistClick(artist)
+                        }
+                        .padding(vertical = 16.dp)
+                )
+                Divider()
+            }
+        }
+    }
+}
+
+
+@Composable
 fun SearchScreen(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
@@ -578,7 +708,7 @@ fun SearchScreen(
         if (searchQuery.isNotBlank() && searchResults.isEmpty()) {
             Text("'$searchQuery' এর জন্য কোনো ফলাফল পাওয়া যায়নি।")
         } else {
-            SongList( // গানের তালিকা Composable পুনরায় ব্যবহার করা হচ্ছে
+            SongList(
                 songs = searchResults,
                 onSongClick = onSongClick,
                 onFavoriteToggle = onFavoriteToggle
@@ -587,15 +717,14 @@ fun SearchScreen(
     }
 }
 
-// --- Helper Composable ---
 @Composable
-fun LoadingScreen(modifier: Modifier = Modifier) { // লোডিং হচ্ছে দেখানোর জন্য
+fun LoadingScreen(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        CircularProgressIndicator() // লোডিং অ্যানিমেশন
+        CircularProgressIndicator()
         Text(
             text = "গান লোড হচ্ছে...",
             style = MaterialTheme.typography.bodyLarge,
@@ -605,7 +734,7 @@ fun LoadingScreen(modifier: Modifier = Modifier) { // লোডিং হচ্�
 }
 
 @Composable
-fun EmptySongListScreen(modifier: Modifier = Modifier) { // গানের তালিকা খালি থাকলে
+fun EmptySongListScreen(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -617,7 +746,7 @@ fun EmptySongListScreen(modifier: Modifier = Modifier) { // গানের ত�
 }
 
 @Composable
-fun ErrorScreen(message: String, modifier: Modifier = Modifier) { // কোনো সমস্যা হলে
+fun ErrorScreen(message: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -630,9 +759,6 @@ fun ErrorScreen(message: String, modifier: Modifier = Modifier) { // কোন�
     }
 }
 
-// --- প্রিভিউ ফাংশন ---
-
-// SongDao-এর সব মেথডসহ FakeSongDao
 private class FakeSongDao : SongDao {
     override fun getAllSongs(): Flow<List<Song>> = flowOf(listOf(
         Song(id = 1, title = "আমার সোনার বাংলা", artistName = "রবীন্দ্রনাথ ঠাকুর", era = "আধুনিক", genre = "রবীন্দ্রসঙ্গীত", isFavorite = true),
@@ -645,8 +771,8 @@ private class FakeSongDao : SongDao {
 
     override fun getSongById(songId: Int): Flow<Song?> = flowOf(
         Song(
-            id = 1,
-            title = "কফি হাউসের সেই আড্ডাটা",
+            id = songId, // ডামি আইডির সাথে মিল রাখার জন্য
+            title = "কফি হাউসের সেই আড্ডাটা ($songId)",
             artistName = "মান্না দে",
             albumName = "Single",
             lyricist = "গৌরীপ্রসন্ন মজুমদার",
@@ -654,9 +780,9 @@ private class FakeSongDao : SongDao {
             era = "আধুনিক",
             genre = "আধুনিক বাংলা",
             releaseYear = 1983,
-            lyrics = "কফি হাউসের সেই আড্ডাটা আজ আর নেই,\nকোথায় হারিয়ে গেল সোনালী বিকেলগুলো সেই...",
+            lyrics = "কফি হাউসের সেই আড্ডাটা আজ আর নেই...",
             isFavorite = true,
-            notes = "একটি কালজয়ী জনপ্রিয় বাংলা গান。"
+            notes = "একটি কালজয়ী জনপ্রিয় বাংলা গান।"
         )
     )
 
@@ -665,18 +791,27 @@ private class FakeSongDao : SongDao {
     override suspend fun updateSong(song: Song) {}
     override suspend fun deleteSong(song: Song) {}
     override fun searchSongs(query: String): Flow<List<Song>> = flowOf(emptyList())
-    override fun getSongsByArtist(artistName: String): Flow<List<Song>> = flowOf(emptyList())
+    override fun getSongsByArtist(artistName: String): Flow<List<Song>> = flowOf(
+        listOf(
+            Song(id = 3, title = "গান ১ শিল্পী $artistName", artistName = artistName),
+            Song(id = 4, title = "গান ২ শিল্পী $artistName", artistName = artistName)
+        )
+    )
     override fun getSongsByGenre(genreName: String): Flow<List<Song>> = flowOf(emptyList())
-
-    // --- এই নতুন ফাংশনগুলো যোগ করুন ---
-    override fun getSongCount(): Flow<Int> = flowOf(869) // ডামি সংখ্যা
-    override fun getArtistCount(): Flow<Int> = flowOf(29)  // ডামি সংখ্যা
-    override fun getLyricistCount(): Flow<Int> = flowOf(990)// ডামি সংখ্যা
-    override fun getComposerCount(): Flow<Int> = flowOf(67) // ডামি সংখ্যা
-    // --- এই নতুন ফাংশনটি যোগ করুন ---
+    override fun getSongCount(): Flow<Int> = flowOf(869)
+    override fun getArtistCount(): Flow<Int> = flowOf(29)
+    override fun getLyricistCount(): Flow<Int> = flowOf(990)
+    override fun getComposerCount(): Flow<Int> = flowOf(67)
     override fun getAllArtists(): Flow<List<String>> = flowOf(listOf("রবীন্দ্রনাথ ঠাকুর", "মান্না দে", "কাজী নজরুল ইসলাম"))
-    // --- ---
-    // --- ---
+
+    // FakeSongDao তে বাকি ফাংশনগুলো যোগ করতে হবে
+    override fun getSongsByLyricist(lyricistName: String): Flow<List<Song>> = flowOf(emptyList())
+    override fun getSongsByComposer(composerName: String): Flow<List<Song>> = flowOf(emptyList())
+    override fun getSongsByEra(eraName: String): Flow<List<Song>> = flowOf(emptyList())
+    override fun getAllLyricists(): Flow<List<String>> = flowOf(listOf("গীতিকার ১", "গীতিকার ২"))
+    override fun getAllComposers(): Flow<List<String>> = flowOf(listOf("সুরকার ১", "সুরকার ২"))
+    override fun getAllGenres(): Flow<List<String>> = flowOf(listOf("রবীন্দ্রসঙ্গীত", "নজরুলগীতি", "আধুনিক"))
+    override fun getAllEras(): Flow<List<String>> = flowOf(listOf("প্রাচীন", "মধ্যযুগ", "আধুনিক"))
 }
 
 
@@ -696,7 +831,6 @@ fun SongItemPreview() {
 @Composable
 fun HomeScreenPreview() {
     BanglaGanTheme {
-        // প্রিভিউয়ের জন্য একটি ডামি UiState তৈরি করুন
         val previewUiState = SongUiState(
             totalSongs = 869,
             totalArtists = 29,
@@ -704,8 +838,8 @@ fun HomeScreenPreview() {
             totalComposers = 67
         )
         HomeScreen(
-            uiState = previewUiState, // ডামি ডেটা পাস করুন
-            navController = rememberNavController() // প্রিভিউয়ের জন্য একটি ডামি NavController
+            uiState = previewUiState,
+            navController = rememberNavController()
         )
     }
 }
@@ -726,39 +860,13 @@ fun SongDetailScreenPreview() {
             releaseYear = 1983,
             lyrics = "কফি হাউসের সেই আড্ডাটা আজ আর নেই,\nকোথায় হারিয়ে গেল সোনালী বিকেলগুলো সেই...",
             isFavorite = true,
-            notes = "একটি কালজয়ী জনপ্রিয় বাংলা গান।"
+            notes = "একটি কালজয়ী জনপ্রিয় বাংলা গান。"
         )
-
-        // ডামি ViewModel তৈরি (সরাসরি ক্লাস ব্যবহার করে)
         val dummyViewModel = SongViewModel(SongRepository(FakeSongDao()))
-
-        SongDetailScreen(song = previewSong, songViewModel = dummyViewModel)
-    }
-}
-
-@Composable
-fun ArtistListScreen(
-    artists: List<String>,
-    onArtistClick: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    if (artists.isEmpty()) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("কোনো শিল্পী পাওয়া যায়নি।")
-        }
-    } else {
-        LazyColumn(modifier = modifier.padding(16.dp)) {
-            items(artists) { artist ->
-                Text(
-                    text = artist,
-                    style = MaterialTheme.typography.titleMedium, // একটু বড় ফন্ট
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onArtistClick(artist) }
-                        .padding(vertical = 16.dp) // প্রতিটি আইটেমের মধ্যে ফাঁকা জায়গা
-                )
-                Divider() // আইটেমগুলোর মধ্যে বিভাজক রেখা
-            }
-        }
+        SongDetailScreen(
+            song = previewSong,
+            songViewModel = dummyViewModel,
+            onArtistNameClick = {}
+        )
     }
 }
