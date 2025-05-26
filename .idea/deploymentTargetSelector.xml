@@ -18,11 +18,11 @@
       </SelectionState>
       <SelectionState runConfigName="BanglaGan.app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-05-25T11:56:34.091049402Z">
+        <DropdownSelection timestamp="2025-05-26T18:06:14.423686832Z">
           <Target type="DEFAULT_BOOT">
-            <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=/home/user/.android/avd/Pixel_9_Pro.avd" />
-            </handle>
+            <template>
+              <DeviceId pluginId="FirebaseDirectAccess" type="TEMPLATE" identifier="model_id=e3q/34" />
+            </template>
           </Target>
         </DropdownSelection>
         <DialogSelection />

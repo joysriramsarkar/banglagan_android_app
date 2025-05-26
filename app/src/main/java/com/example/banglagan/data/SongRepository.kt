@@ -2,51 +2,44 @@ package com.example.banglagan.data
 
 import kotlinx.coroutines.flow.Flow
 
-// SongDao
 class SongRepository(private val songDao: SongDao) {
+
+    // সরাসরি Flow হিসেবে ডেটা এক্সপোজ করা হচ্ছে
     val allSongs: Flow<List<Song>> = songDao.getAllSongs()
-
     val favoriteSongs: Flow<List<Song>> = songDao.getFavoriteSongs()
-
-    // মোট গানের সংখ্যার Flow
     val songCount: Flow<Int> = songDao.getSongCount()
-
-    // মোট শিল্পীর সংখ্যার Flow
     val artistCount: Flow<Int> = songDao.getArtistCount()
-
-    // মোট গীতিকারের সংখ্যার Flow
     val lyricistCount: Flow<Int> = songDao.getLyricistCount()
-
-    // মোট সুরকারের সংখ্যার Flow
     val composerCount: Flow<Int> = songDao.getComposerCount()
+    val eraCount: Flow<Int> = songDao.getEraCount() // SongDao তে getEraCount() যোগ করা হয়েছে
+    val genreCount: Flow<Int> = songDao.getGenreCount() // SongDao তে getGenreCount() যোগ করা হয়েছে
 
-    val allArtists: Flow<List<String>> = songDao.getAllArtists()
+    // বিভিন্ন তালিকা পাওয়ার জন্য ফাংশন
+    fun getAllArtists(): Flow<List<String>> = songDao.getAllArtists()
+    fun getAllLyricists(): Flow<List<String>> = songDao.getAllLyricists()
+    fun getAllComposers(): Flow<List<String>> = songDao.getAllComposers()
+    fun getAllEras(): Flow<List<String>> = songDao.getAllEras()
+    fun getAllGenres(): Flow<List<String>> = songDao.getAllGenres()
 
-    fun getSongById(songId: Int): Flow<Song?> {
-        return songDao.getSongById(songId)
+    // নির্দিষ্ট ক্যাটেগরি অনুযায়ী গান পাওয়ার ফাংশন
+    fun getSongsByArtist(name: String): Flow<List<Song>> = songDao.getSongsByArtist(name)
+    fun getSongsByLyricist(name: String): Flow<List<Song>> = songDao.getSongsByLyricist(name)
+    fun getSongsByComposer(name: String): Flow<List<Song>> = songDao.getSongsByComposer(name)
+    fun getSongsByEra(name: String): Flow<List<Song>> = songDao.getSongsByEra(name)
+    fun getSongsByGenre(name: String): Flow<List<Song>> = songDao.getSongsByGenre(name)
 
-    }
+    // সার্চ করার ফাংশন
+    fun searchSongs(query: String): Flow<List<Song>> = songDao.searchSongs(query)
 
-    fun searchSongs(query: String): Flow<List<Song>> {
-        if (query.isBlank()) {
-            return allSongs
-        }
-        return songDao.searchSongs(query)
-    }
+    // একটি নির্দিষ্ট গান আইডি দিয়ে পাওয়ার ফাংশন
+    fun getSongById(songId: Int): Flow<Song?> = songDao.getSongById(songId)
 
-    fun getSongsByArtist(artistName: String): Flow<List<Song>> {
-        return songDao.getSongsByArtist(artistName)
-    }
-
-    fun getSongsByGenre(genreName: String): Flow<List<Song>> {
-        return songDao.getSongsByGenre(genreName)
-    }
-
+    // ডেটাবেসে গান যোগ, আপডেট ও ডিলিট করার সাসপেন্ড ফাংশন
     suspend fun insertSong(song: Song) {
         songDao.insertSong(song)
     }
 
-    suspend fun insertMultipleSongs(songs: List<Song>) {
+    suspend fun insertMultipleSongs(songs: List<Song>) { // এই ফাংশনটি ViewModel এ ব্যবহার করা হয়নি, তবে রাখা হলো
         songDao.insertAllSongs(songs)
     }
 

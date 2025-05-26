@@ -106,4 +106,11 @@ interface SongDao {
     // সব স্বতন্ত্র গানের যুগ পাওয়ার জন্য (সাজানো)
     @Query("SELECT DISTINCT era FROM songs WHERE era IS NOT NULL AND era != '' ORDER BY era ASC")
     fun getAllEras(): Flow<List<String>>
+
+    @Query("SELECT COUNT(DISTINCT era) FROM songs WHERE era IS NOT NULL AND era != ''")
+    fun getEraCount(): Flow<Int>
+
+    @Query("SELECT COUNT(DISTINCT genre) FROM songs WHERE genre IS NOT NULL AND genre != ''")
+    fun getGenreCount(): Flow<Int>
+
 }
