@@ -27,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-// import androidx.compose.ui.res.painterResource // এটি আর ব্যবহৃত হচ্ছে না
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,14 +42,16 @@ import androidx.navigation.navArgument
 import com.example.banglagan.data.Song
 import com.example.banglagan.data.SongDao
 import com.example.banglagan.data.SongRepository
-import com.example.banglagan.vi.screens.GenericListScreen // আপনার প্যাকেজ অনুযায়ী
+import com.example.banglagan.vi.screens.GenericListScreen
+import com.example.banglagan.vi.screens.AddSongScreen
+import com.example.banglagan.vi.screens.StatisticsScreen
 import com.example.banglagan.utils.toBanglaString
 import com.example.banglagan.vi.song.SongUiState
 import com.example.banglagan.vi.song.SongViewModel
 import com.example.banglagan.vi.song.SongViewModelFactory
 import com.example.banglagan.vi.theme.BanglaGanTheme
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow // Preview এর জন্য
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOf
@@ -61,6 +62,8 @@ import java.nio.charset.StandardCharsets
 object AppDestinations {
     const val HOME_ROUTE = "home"
     const val SONG_LIST_ROUTE = "song_list"
+    const val ADD_SONG_ROUTE = "add_song"
+    const val STATISTICS_ROUTE = "statistics"
 
     const val SONG_DETAIL_ROUTE_BASE = "song_detail"
     const val SONG_DETAIL_ARG_SONG_ID = "songId"
@@ -105,6 +108,8 @@ fun ActualHomeScreen(
     onNavigateToComposerList: () -> Unit,
     onNavigateToEraList: () -> Unit,
     onNavigateToGenreList: () -> Unit,
+    onNavigateToAddSong: () -> Unit,
+    onNavigateToStatistics: () -> Unit,
     songViewModel: SongViewModel,
     navController: NavHostController,
     modifier: Modifier = Modifier
@@ -154,15 +159,57 @@ fun ActualHomeScreen(
 
         Text("আরও দেখুন", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
+        
         Card(modifier = Modifier
             .fillMaxWidth()
             .clickable { navController.navigate(AppDestinations.SONG_LIST_ROUTE) }) {
-            Text("সব গান দেখুন", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp))
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Filled.List, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("সব গান দেখুন", style = MaterialTheme.typography.titleMedium)
+            }
         }
+        
         Card(modifier = Modifier
             .fillMaxWidth()
             .clickable { navController.navigate(AppDestinations.FAVORITES_ROUTE) }) {
-            Text("পছন্দের গান", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp))
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Filled.Favorite, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("পছন্দের গান", style = MaterialTheme.typography.titleMedium)
+            }
+        }
+        
+        Card(modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onNavigateToAddSong() }) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("নতুন গান যোগ করুন", style = MaterialTheme.typography.titleMedium)
+            }
+        }
+        
+        Card(modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onNavigateToStatistics() }) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Filled.Analytics, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("পরিসংখ্যান দেখুন", style = MaterialTheme.typography.titleMedium)
+            }
         }
     }
 }
@@ -221,6 +268,8 @@ fun BanglaGanApp(songViewModel: SongViewModel) {
                 currentRoute == AppDestinations.HOME_ROUTE -> "বাংলা গানের সংগ্রহ"
                 currentRoute == AppDestinations.SONG_LIST_ROUTE -> "সব গান"
                 currentRoute == AppDestinations.FAVORITES_ROUTE -> "পছন্দের গান"
+                currentRoute == AppDestinations.ADD_SONG_ROUTE -> "নতুন গান যোগ করুন"
+                currentRoute == AppDestinations.STATISTICS_ROUTE -> "পরিসংখ্যান"
                 currentRoute == AppDestinations.SEARCH_ROUTE_PATTERN -> "গান খুঁজুন"
                 currentRoute == AppDestinations.ARTIST_LIST_ROUTE -> "শিল্পীর তালিকা"
                 currentRoute == AppDestinations.LYRICIST_LIST_ROUTE -> "গীতিকারের তালিকা"
@@ -239,7 +288,9 @@ fun BanglaGanApp(songViewModel: SongViewModel) {
                 canNavigateBack = navController.previousBackStackEntry != null && currentRoute != AppDestinations.HOME_ROUTE,
                 navigateUp = { navController.navigateUp() },
                 showSearchIcon = !(currentRoute?.startsWith(AppDestinations.SONG_DETAIL_ROUTE_BASE) == true ||
-                        currentRoute == AppDestinations.SEARCH_ROUTE_PATTERN),
+                        currentRoute == AppDestinations.SEARCH_ROUTE_PATTERN ||
+                        currentRoute == AppDestinations.ADD_SONG_ROUTE ||
+                        currentRoute == AppDestinations.STATISTICS_ROUTE),
                 onSearchClick = { navController.navigate(AppDestinations.searchRoute()) }
             )
         },
@@ -329,9 +380,20 @@ fun BanglaGanBottomBar(navController: NavHostController) {
                 }
             }
         )
+        NavigationBarItem(
+            icon = { Icon(Icons.Filled.Add, contentDescription = "যোগ করুন") },
+            label = { Text("যোগ করুন") },
+            selected = currentRoute == AppDestinations.ADD_SONG_ROUTE,
+            onClick = {
+                navController.navigate(AppDestinations.ADD_SONG_ROUTE) {
+                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+        )
     }
 }
-
 
 @Composable
 fun BanglaGanNavHost(
@@ -352,10 +414,27 @@ fun BanglaGanNavHost(
                 onNavigateToComposerList = { navController.navigate(AppDestinations.COMPOSER_LIST_ROUTE) },
                 onNavigateToEraList = { navController.navigate(AppDestinations.ERA_LIST_ROUTE) },
                 onNavigateToGenreList = { navController.navigate(AppDestinations.GENRE_LIST_ROUTE) },
+                onNavigateToAddSong = { navController.navigate(AppDestinations.ADD_SONG_ROUTE) },
+                onNavigateToStatistics = { navController.navigate(AppDestinations.STATISTICS_ROUTE) },
                 songViewModel = songViewModel,
                 navController = navController
             )
         }
+        
+        composable(AppDestinations.ADD_SONG_ROUTE) {
+            AddSongScreen(
+                songViewModel = songViewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        composable(AppDestinations.STATISTICS_ROUTE) {
+            StatisticsScreen(
+                songViewModel = songViewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
         composable(AppDestinations.SONG_LIST_ROUTE) {
             val songUiState by songViewModel.songUiState.collectAsState()
             SongListScreen(
@@ -389,7 +468,7 @@ fun BanglaGanNavHost(
                     }
                 )
             } else {
-                Text("গান পাওয়া যায়নি অথবা অবৈধ আইডি।")
+                Text("গান পাওয়া যায়নি অথবা অবৈধ আইডি।")
             }
         }
         composable(AppDestinations.FAVORITES_ROUTE) {
@@ -515,7 +594,7 @@ fun BanglaGanNavHost(
                     LoadingScreen(modifier = Modifier.padding(paddingValues))
                 } else if (songs.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center){
-                        Text("$categoryName ক্যাটেগরিতে কোনো গান পাওয়া যায়নি।")
+                        Text("$categoryName ক্যাটেগরিতে কোনো গান পাওয়া যায়নি।")
                     }
                 } else {
                     SongList(
@@ -772,7 +851,7 @@ fun ErrorScreen(message: String, modifier: Modifier = Modifier) {
 fun SongItemPreview() {
     BanglaGanTheme {
         SongItem(
-            song = Song(id = 1, title = "আমার সোনার বাংলা", artistName = "রবীন্দ্রনাথ ঠাকুর", era = "আধুনিক", genre = "রবীন্দ্রসঙ্গীত", isFavorite = true, albumName = "গীতবিতান", lyricist = "রবীন্দ্রনাথ ঠাকুর", composer = "রবীন্দ্রনাথ ঠাকুর", lyrics = "...", releaseYear = 1905, notes = "জাতীয় সঙ্গীত", audioUrl = null, videoUrl = null),
+            song = Song(id = 1, title = "আমার সোনার বাংলা", artistName = "রবীন্দ্রনাথ ঠাকুর", era = "আধুনিক", genre = "রবীন্দ্রসঙ্গীত", isFavorite = true, albumName = "গীতবিতান", lyricist = "রবীন্দ্রনাথ ঠাকুর", composer = "রবীন্দ্রনাথ ঠাকুর", lyrics = "...", releaseYear = 1905, notes = "জাতীয় সঙ্গীত", audioUrl = null, videoUrl = null),
             onFavoriteToggle = {},
             onClick = {}
         )
@@ -791,6 +870,8 @@ fun HomeScreenPreview() {
             onNavigateToComposerList = {},
             onNavigateToEraList = {},
             onNavigateToGenreList = {},
+            onNavigateToAddSong = {},
+            onNavigateToStatistics = {},
             songViewModel = dummyViewModel,
             navController = rememberNavController()
         )
@@ -825,14 +906,14 @@ fun GenericListScreenPreview() {
     }
 }
 
-// FakeSongDao MainActivity.kt তে রাখা হয়েছে Preview এর জন্য
+// FakeSongDao MainActivity.kt তে রাখা হয়েছে Preview এর জন্য
 private class FakeSongDao : SongDao {
     override fun getAllSongs(): Flow<List<Song>> = flowOf(listOf(
-        Song(id = 1, title = "আমার সোনার বাংলা", artistName = "রবীন্দ্রনাথ ঠাকুর", era = "আধুনিক", genre = "রবীন্দ্রসঙ্গীত", isFavorite = true, albumName = "গীতবিতান", lyricist = "রবীন্দ্রনাথ ঠাকুর", composer = "রবীন্দ্রনাথ ঠাকুর", lyrics = "...", releaseYear = 1905, notes = "জাতীয় সঙ্গীত", audioUrl = null, videoUrl = null),
-        Song(id = 2, title = "কফি হাউসের সেই আড্ডাটা", artistName = "মান্না দে", genre = "আধুনিক বাংলা", albumName = "কফি হাউস", lyricist = "গৌরীপ্রসন্ন মজুমদার", composer = "সুপর্ণকান্তি ঘোষ", era = "১৯৮৩", lyrics = "...", releaseYear = 1983, notes = "জনপ্রিয় গান", isFavorite = false, audioUrl = null, videoUrl = null)
+        Song(id = 1, title = "আমার সোনার বাংলা", artistName = "রবীন্দ্রনাথ ঠাকুর", era = "আধুনিক", genre = "রবীন্দ্রসঙ্গীত", isFavorite = true, albumName = "গীতবিতান", lyricist = "রবীন্দ্রনাথ ঠাকুর", composer = "রবীন্দ্রনাথ ঠাকুর", lyrics = "...", releaseYear = 1905, notes = "জাতীয় সঙ্গীত", audioUrl = null, videoUrl = null),
+        Song(id = 2, title = "কফি হাউসের সেই আড্ডাটা", artistName = "মান্না দে", genre = "আধুনিক বাংলা", albumName = "কফি হাউস", lyricist = "গৌরীপ্রসন্ন মজুমদার", composer = "সুপর্ণকান্তি ঘোষ", era = "১৯৮৩", lyrics = "...", releaseYear = 1983, notes = "জনপ্রিয় গান", isFavorite = false, audioUrl = null, videoUrl = null)
     ))
     override fun getFavoriteSongs(): Flow<List<Song>> = flowOf(listOf(
-        Song(id = 1, title = "আমার সোনার বাংলা", artistName = "রবীন্দ্রনাথ ঠাকুর", era = "আধুনিক", genre = "রবীন্দ্রসঙ্গীত", isFavorite = true, albumName = "গীতবিতান", lyricist = "রবীন্দ্রনাথ ঠাকুর", composer = "রবীন্দ্রনাথ ঠাকুর", lyrics = "...", releaseYear = 1905, notes = "জাতীয় সঙ্গীত", audioUrl = null, videoUrl = null)
+        Song(id = 1, title = "আমার সোনার বাংলা", artistName = "রবীন্দ্রনাথ ঠাকুর", era = "আধুনিক", genre = "রবীন্দ্রসঙ্গীত", isFavorite = true, albumName = "গীতবিতান", lyricist = "রবীন্দ্রনাথ ঠাকুর", composer = "রবীন্দ্রনাথ ঠাকুর", lyrics = "...", releaseYear = 1905, notes = "জাতীয় সঙ্গীত", audioUrl = null, videoUrl = null)
     ))
     override fun getSongById(songId: Int): Flow<Song?> = flowOf(
         Song(id = songId, title = "কফি হাউসের সেই আড্ডাটা ($songId)", artistName = "মান্না দে", albumName = "Single", lyricist = "গৌরীপ্রসন্ন মজুমদার", composer = "সুপর্ণকান্তি ঘোষ", era = "আধুনিক", genre = "আধুনিক বাংলা", lyrics = "কফি হাউসের সেই আড্ডাটা আজ আর নেই...", isFavorite = true, releaseYear = 1983, notes = "একটি কালজয়ী গান", audioUrl = null, videoUrl = null)
