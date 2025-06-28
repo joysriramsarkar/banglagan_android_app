@@ -846,12 +846,28 @@ fun ErrorScreen(message: String, modifier: Modifier = Modifier) {
     }
 }
 
+// ✅ প্রিভিউ ফাংশনগুলো সঠিকভাবে সেটআপ করা হয়েছে
 @Preview(showBackground = true, name = "Song Item Preview")
 @Composable
 fun SongItemPreview() {
     BanglaGanTheme {
         SongItem(
-            song = Song(id = 1, title = "আমার সোনার বাংলা", artistName = "রবীন্দ্রনাথ ঠাকুর", era = "আধুনিক", genre = "রবীন্দ্রসঙ্গীত", isFavorite = true, albumName = "গীতবিতান", lyricist = "রবীন্দ্রনাথ ঠাকুর", composer = "রবীন্দ্রনাথ ঠাকুর", lyrics = "...", releaseYear = 1905, notes = "জাতীয় সঙ্গীত", audioUrl = null, videoUrl = null),
+            song = Song(
+                id = 1, 
+                title = "আমার সোনার বাংলা", 
+                artistName = "রবীন্দ্রনাথ ঠাকুর", 
+                era = "আধুনিক", 
+                genre = "রবীন্দ্রসঙ্গীত", 
+                isFavorite = true, 
+                albumName = "গীতবিতান", 
+                lyricist = "রবীন্দ্রনাথ ঠাকুর", 
+                composer = "রবীন্দ্রনাথ ঠাকুর", 
+                lyrics = "আমার সোনার বাংলা, আমি তোমায় ভালোবাসি...", 
+                releaseYear = 1905, 
+                notes = "জাতীয় সঙ্গীত", 
+                audioUrl = null, 
+                videoUrl = null
+            ),
             onFavoriteToggle = {},
             onClick = {}
         )
@@ -883,30 +899,80 @@ fun HomeScreenPreview() {
 fun SongDetailScreenPreview() {
     BanglaGanTheme {
         val previewSong = Song(
-            id = 1, title = "কফি হাউসের সেই আড্ডাটা", artistName = "মান্না দে", albumName = "Single",
-            lyricist = "গৌরীপ্রসন্ন মজুমদার", composer = "সুপর্ণকান্তি ঘোষ", era = "আধুনিক",
-            genre = "আধুনিক বাংলা", lyrics = "কফি হাউসের সেই আড্ডাটা আজ আর নেই,\nকোথায় হারিয়ে গেল সোনালী বিকেলগুলো সেই...", isFavorite = true, releaseYear = 1983, notes = "একটি কালজয়ী গান", audioUrl = null, videoUrl = null
+            id = 1, 
+            title = "কফি হাউসের সেই আড্ডাটা", 
+            artistName = "মান্না দে", 
+            albumName = "Single",
+            lyricist = "গৌরীপ্রসন্ন মজুমদার", 
+            composer = "সুপর্ণকান্তি ঘোষ", 
+            era = "আধুনিক",
+            genre = "আধুনিক বাংলা", 
+            lyrics = "কফি হাউসের সেই আড্ডাটা আজ আর নেই,\nকোথায় হারিয়ে গেল সোনালী বিকেলগুলো সেই...", 
+            isFavorite = true, 
+            releaseYear = 1983, 
+            notes = "একটি কালজয়ী গান", 
+            audioUrl = null, 
+            videoUrl = null
         )
         val dummyViewModel = SongViewModel(SongRepository(FakeSongDao()))
-        SongDetailScreen(song = previewSong, songViewModel = dummyViewModel, onArtistNameClick = {})
-    }
-}
-
-@Preview(showBackground = true, name = "Generic List Screen Preview")
-@Composable
-fun GenericListScreenPreview() {
-    BanglaGanTheme {
-        val itemsFlow: StateFlow<List<String>> = remember { MutableStateFlow(listOf("আইটেম ১", "আইটেম ২", "আইটেম ৩")) }
-        GenericListScreen(
-            title = "পরীক্ষামূলক তালিকা",
-            itemsFlow = itemsFlow,
-            onItemClick = {},
-            onBack = {}
+        SongDetailScreen(
+            song = previewSong, 
+            songViewModel = dummyViewModel, 
+            onArtistNameClick = {}
         )
     }
 }
 
-// FakeSongDao MainActivity.kt তে রাখা হয়েছে Preview এর জন্য
+@Preview(showBackground = true, name = "Stats Section Preview")
+@Composable
+fun StatsSectionPreview() {
+    BanglaGanTheme {
+        StatsSection(
+            uiState = SongUiState(
+                totalSongs = 869,
+                totalArtists = 29,
+                totalLyricists = 990,
+                totalComposers = 67
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Category Button Preview")
+@Composable
+fun CategoryButtonPreview() {
+    BanglaGanTheme {
+        CategoryHomeButton(
+            label = "শিল্পী",
+            icon = Icons.Filled.Person,
+            onClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Search Screen Preview")
+@Composable
+fun SearchScreenPreview() {
+    BanglaGanTheme {
+        SearchScreen(
+            searchQuery = "রবীন্দ্রনাথ",
+            onSearchQueryChange = {},
+            searchResults = listOf(
+                Song(
+                    id = 1, 
+                    title = "আমার সোনার বাংলা", 
+                    artistName = "রবীন্দ্রনাথ ঠাকুর", 
+                    era = "আধুনিক", 
+                    genre = "রবীন্দ্রসঙ্গীত"
+                )
+            ),
+            onSongClick = {},
+            onFavoriteToggle = {}
+        )
+    }
+}
+
+// FakeSongDao প্রিভিউয়ের জন্য
 private class FakeSongDao : SongDao {
     override fun getAllSongs(): Flow<List<Song>> = flowOf(listOf(
         Song(id = 1, title = "আমার সোনার বাংলা", artistName = "রবীন্দ্রনাথ ঠাকুর", era = "আধুনিক", genre = "রবীন্দ্রসঙ্গীত", isFavorite = true, albumName = "গীতবিতান", lyricist = "রবীন্দ্রনাথ ঠাকুর", composer = "রবীন্দ্রনাথ ঠাকুর", lyrics = "...", releaseYear = 1905, notes = "জাতীয় সঙ্গীত", audioUrl = null, videoUrl = null),
@@ -942,8 +1008,6 @@ private class FakeSongDao : SongDao {
     override fun getAllComposers(): Flow<List<String>> = flowOf(listOf("সুরকার ১", "সুরকার ২"))
     override fun getAllGenres(): Flow<List<String>> = flowOf(listOf("রবীন্দ্রসঙ্গীত", "নজরুলগীতি", "আধুনিক"))
     override fun getAllEras(): Flow<List<String>> = flowOf(listOf("প্রাচীন", "মধ্যযুগ", "আধুনিক"))
-
-    // FakeSongDao তে getEraCount এবং getGenreCount যোগ করা হলো
-    override fun getEraCount(): Flow<Int> = flowOf(3) // ডামি ভ্যালু
-    override fun getGenreCount(): Flow<Int> = flowOf(3) // ডামি ভ্যালু
+    override fun getEraCount(): Flow<Int> = flowOf(3)
+    override fun getGenreCount(): Flow<Int> = flowOf(3)
 }
