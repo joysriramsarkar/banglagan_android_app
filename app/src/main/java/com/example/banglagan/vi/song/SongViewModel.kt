@@ -35,15 +35,15 @@ class SongViewModel(private val repository: SongRepository) : ViewModel() {
             repository.composerCount,   // Flow<Int>
             repository.eraCount,        // Flow<Int> - এটি repository তে থাকতে হবে
             repository.genreCount       // Flow<Int> - এটি repository তে থাকতে হবে
-        ) { tộiPhạm -> // tộiPhạm একটি Array<Any> হিসেবে আসছে, এখানে প্রতিটি Flow এর ভ্যালু থাকবে
+        ) { values -> // values একটি Array<Any> হিসেবে আসছে, এখানে প্রতিটি Flow এর ভ্যালু থাকবে
             // combine থেকে আসা ভ্যালুগুলো সঠিকভাবে access করতে হবে
-            val songs = tộiPhạm[0] as List<Song>
-            val songCount = tộiPhạm[1] as Int
-            val artistCount = tộiPhạm[2] as Int
-            val lyricistCount = tộiPhạm[3] as Int
-            val composerCount = tộiPhạm[4] as Int
-            val eraCount = tộiPhạm[5] as Int
-            val genreCount = tộiPhạm[6] as Int
+            val songs = values[0] as List<Song>
+            val songCount = values[1] as Int
+            val artistCount = values[2] as Int
+            val lyricistCount = values[3] as Int
+            val composerCount = values[4] as Int
+            val eraCount = values[5] as Int
+            val genreCount = values[6] as Int
 
             SongUiState(
                 allSongs = songs,
@@ -110,20 +110,22 @@ class SongViewModel(private val repository: SongRepository) : ViewModel() {
     private val _selectedCategoryName = MutableStateFlow<String?>(null)
 
     val songsBySelectedCategory: StateFlow<List<Song>> =
-        combine(_selectedCategoryType, _selectedCategoryName) { type, name ->
-            if (type != null && name != null) {
-                when (type) {
-                    "artist" -> repository.getSongsByArtist(name).firstOrNull() ?: emptyList()
-                    "lyricist" -> repository.getSongsByLyricist(name).firstOrNull() ?: emptyList()
-                    "composer" -> repository.getSongsByComposer(name).firstOrNull() ?: emptyList()
-                    "era" -> repository.getSongsByEra(name).firstOrNull() ?: emptyList()
-                    "genre" -> repository.getSongsByGenre(name).firstOrNull() ?: emptyList()
-                    else -> emptyList()
+        combine(_selectedCategoryType, _selectedCategoryName) { type, name -> Pair(type, name) }
+            .flatMapLatest { (type, name) ->
+                if (type != null && name != null) {
+                    when (type) {
+                        "artist" -> repository.getSongsByArtist(name)
+                        "lyricist" -> repository.getSongsByLyricist(name)
+                        "composer" -> repository.getSongsByComposer(name)
+                        "era" -> repository.getSongsByEra(name)
+                        "genre" -> repository.getSongsByGenre(name)
+                        else -> flowOf(emptyList())
+                    }
+                } else {
+                    flowOf(emptyList())
                 }
-            } else {
-                emptyList()
             }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
 
     fun addSong(

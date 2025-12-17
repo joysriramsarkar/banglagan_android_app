@@ -9,6 +9,9 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -25,8 +28,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -119,20 +125,62 @@ fun ActualHomeScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.surface,
+                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
+                    )
+                )
+            )
             .padding(16.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("স্বাগতম!", style = MaterialTheme.typography.headlineMedium)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "স্বাগতম!",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "বাংলা গানের ভুবনে আপনাকে স্বাগতম",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                )
+            }
+        }
 
-        Text("এক নজরে ডেটাবেস", style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            "এক নজরে ডেটাবেস",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.align(Alignment.Start)
+        )
         StatsSection(uiState = uiState, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(16.dp))
 
-        Text("আরও অন্বেষণ করুন", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            "ক্যাটাগরি",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.align(Alignment.Start)
+        )
 
         val categoryItems = listOf(
             CategoryHomeItem("গান", Icons.Filled.MusicNote, onClick = { onNavigateToSearch("", "song") }),
@@ -145,9 +193,9 @@ fun ActualHomeScreen(
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.heightIn(min = 200.dp, max = 400.dp)
         ) {
             items(items = categoryItems, key = { it.label }) { itemData ->
@@ -155,83 +203,108 @@ fun ActualHomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text("আরও দেখুন", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            "শর্টকাট",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.align(Alignment.Start)
+        )
         
-        Card(modifier = Modifier
-            .fillMaxWidth()
-            .clickable { navController.navigate(AppDestinations.SONG_LIST_ROUTE) }) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Filled.List, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("সব গান দেখুন", style = MaterialTheme.typography.titleMedium)
-            }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            QuickActionCard(
+                label = "সব গান",
+                icon = Icons.Filled.List,
+                modifier = Modifier.weight(1f),
+                onClick = { navController.navigate(AppDestinations.SONG_LIST_ROUTE) }
+            )
+            QuickActionCard(
+                label = "পছন্দের গান",
+                icon = Icons.Filled.Favorite,
+                modifier = Modifier.weight(1f),
+                onClick = { navController.navigate(AppDestinations.FAVORITES_ROUTE) }
+            )
         }
         
-        Card(modifier = Modifier
-            .fillMaxWidth()
-            .clickable { navController.navigate(AppDestinations.FAVORITES_ROUTE) }) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Filled.Favorite, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("পছন্দের গান", style = MaterialTheme.typography.titleMedium)
-            }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            QuickActionCard(
+                label = "নতুন গান",
+                icon = Icons.Filled.Add,
+                modifier = Modifier.weight(1f),
+                onClick = { onNavigateToAddSong() }
+            )
+            QuickActionCard(
+                label = "পরিসংখ্যান",
+                icon = Icons.Filled.Analytics,
+                modifier = Modifier.weight(1f),
+                onClick = { onNavigateToStatistics() }
+            )
         }
-        
-        Card(modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onNavigateToAddSong() }) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("নতুন গান যোগ করুন", style = MaterialTheme.typography.titleMedium)
-            }
-        }
-        
-        Card(modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onNavigateToStatistics() }) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Filled.Analytics, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("পরিসংখ্যান দেখুন", style = MaterialTheme.typography.titleMedium)
-            }
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+fun QuickActionCard(label: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Card(
+        modifier = modifier
+            .height(100.dp)
+            .clickable { onClick() },
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(label, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
         }
     }
 }
 
 @Composable
 fun CategoryHomeButton(label: String, icon: ImageVector, onClick: () -> Unit) {
-    Button(
+    Card(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1.2f),
-        shape = RoundedCornerShape(12.dp),
-        contentPadding = PaddingValues(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxHeight()
+            modifier = Modifier.fillMaxSize()
         ) {
-            Icon(imageVector = icon, contentDescription = label, modifier = Modifier.size(48.dp))
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = label, textAlign = TextAlign.Center, style = MaterialTheme.typography.titleMedium)
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(40.dp),
+                tint = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = label,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
@@ -350,9 +423,8 @@ fun BanglaGanBottomBar(navController: NavHostController) {
             selected = currentRoute == AppDestinations.HOME_ROUTE,
             onClick = {
                 navController.navigate(AppDestinations.HOME_ROUTE) {
-                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                    popUpTo(AppDestinations.HOME_ROUTE) { inclusive = true }
                     launchSingleTop = true
-                    restoreState = true
                 }
             }
         )
@@ -627,16 +699,27 @@ fun StatsSection(uiState: SongUiState, modifier: Modifier = Modifier) {
 fun StatsCard(label: String, count: Int, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth().aspectRatio(1.5f),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(text = count.toBanglaString(), style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = label, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+            Text(
+                text = count.toBanglaString(),
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -692,25 +775,63 @@ fun SongItem(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp)
+            .animateContentSize(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = song.title, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(text = "শিল্পী: ${song.artistName ?: "অজানা"}", style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (!song.era.isNullOrEmpty()) { Text(text = "যুগ: ${song.era}", style = MaterialTheme.typography.bodySmall) }
-                if (!song.genre.isNullOrEmpty()) { Text(text = "ধরণ: ${song.genre}", style = MaterialTheme.typography.bodySmall) }
+                Text(
+                    text = song.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "শিল্পী: ${song.artistName ?: "অজানা"}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (!song.era.isNullOrEmpty() || !song.genre.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (!song.era.isNullOrEmpty()) {
+                            AssistChip(
+                                onClick = { },
+                                label = { Text(song.era, style = MaterialTheme.typography.labelSmall) },
+                                modifier = Modifier.height(24.dp)
+                            )
+                        }
+                        if (!song.genre.isNullOrEmpty()) {
+                            AssistChip(
+                                onClick = { },
+                                label = { Text(song.genre, style = MaterialTheme.typography.labelSmall) },
+                                modifier = Modifier.height(24.dp)
+                            )
+                        }
+                    }
+                }
             }
             IconButton(onClick = onFavoriteToggle) {
                 Icon(
                     imageVector = if (song.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                     contentDescription = if (song.isFavorite) "পছন্দ থেকে সরান" else "পছন্দ করুন",
-                    tint = if (song.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (song.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                 )
             }
         }
@@ -725,60 +846,141 @@ fun SongDetailScreen(
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxSize().padding(16.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
         horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(song.title, style = MaterialTheme.typography.headlineMedium)
-                IconButton(onClick = { songViewModel.toggleFavoriteStatus(song) }) {
-                    Icon(
-                        imageVector = if (song.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = "ফেভারিট",
-                        tint = if (song.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Text(
+                            song.title,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { songViewModel.toggleFavoriteStatus(song) }) {
+                            Icon(
+                                imageVector = if (song.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                contentDescription = "ফেভারিট",
+                                tint = if (song.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.clickable(enabled = song.artistName != null) {
+                            song.artistName?.let { onArtistNameClick(it) }
+                        },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Filled.Person, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = song.artistName ?: "অজানা",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            textDecoration = if (song.artistName != null) androidx.compose.ui.text.style.TextDecoration.Underline else null
+                        )
+                    }
                 }
             }
         }
+
         item {
-            val artistNameDisplay = song.artistName ?: "অজানা"
-            Row(
-                modifier = Modifier.clickable(enabled = song.artistName != null) {
-                    song.artistName?.let { onArtistNameClick(it) }
-                }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Text("শিল্পী: ", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = artistNameDisplay,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        color = if (song.artistName != null) MaterialTheme.colorScheme.primary else LocalContentColor.current
-                    )
-                )
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DetailRow(icon = Icons.Filled.Album, label = "অ্যালবাম", value = song.albumName)
+                    DetailRow(icon = Icons.Filled.EditNote, label = "গীতিকার", value = song.lyricist)
+                    DetailRow(icon = Icons.Filled.LibraryMusic, label = "সুরকার", value = song.composer)
+                    DetailRow(icon = Icons.Filled.AccessTime, label = "যুগ", value = song.era)
+                    DetailRow(icon = Icons.Filled.Category, label = "ধরণ", value = song.genre)
+                    if (song.releaseYear != null && song.releaseYear > 0) {
+                        DetailRow(icon = Icons.Filled.CalendarToday, label = "প্রকাশকাল", value = song.releaseYear.toBanglaString())
+                    }
+                }
             }
         }
-        if (!song.albumName.isNullOrEmpty()) { item { Text("অ্যালবাম: ${song.albumName}", style = MaterialTheme.typography.bodyLarge) } }
-        if (!song.lyricist.isNullOrEmpty()) { item { Text("গীতিকার: ${song.lyricist}", style = MaterialTheme.typography.bodyLarge) } }
-        if (!song.composer.isNullOrEmpty()) { item { Text("সুরকার: ${song.composer}", style = MaterialTheme.typography.bodyLarge) } }
-        if (!song.era.isNullOrEmpty()) { item { Text("যুগ: ${song.era}", style = MaterialTheme.typography.bodyLarge) } }
-        if (!song.genre.isNullOrEmpty()) { item { Text("ধরণ: ${song.genre}", style = MaterialTheme.typography.bodyLarge) } }
-        if (song.releaseYear != null && song.releaseYear > 0) { item { Text("প্রকাশকাল: ${song.releaseYear?.toBanglaString() ?: ""}", style = MaterialTheme.typography.bodyLarge) } }
+
         if (!song.lyrics.isNullOrEmpty()) {
             item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("গানের কথা:", style = MaterialTheme.typography.titleMedium)
-                Text(song.lyrics!!, style = MaterialTheme.typography.bodyLarge)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "গানের কথা",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            song.lyrics!!,
+                            style = MaterialTheme.typography.bodyLarge,
+                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.2
+                        )
+                    }
+                }
             }
         }
+
         if (!song.notes.isNullOrEmpty()) {
             item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("বিশেষ তথ্য:", style = MaterialTheme.typography.titleMedium)
-                Text(song.notes!!, style = MaterialTheme.typography.bodyLarge)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "বিশেষ তথ্য",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            song.notes!!,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DetailRow(icon: ImageVector, label: String, value: String?) {
+    if (!value.isNullOrEmpty()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+        ) {
+            Icon(imageVector = icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                Text(text = value, style = MaterialTheme.typography.bodyLarge)
             }
         }
     }
