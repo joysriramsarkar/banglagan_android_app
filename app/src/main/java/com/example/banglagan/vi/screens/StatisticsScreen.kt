@@ -25,6 +25,7 @@ fun StatisticsScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by songViewModel.songUiState.collectAsState()
+    val topArtists by songViewModel.topArtists.collectAsState()
     val artists by songViewModel.artists.collectAsState()
     val lyricists by songViewModel.lyricists.collectAsState()
     val composers by songViewModel.composers.collectAsState()
@@ -70,7 +71,7 @@ fun StatisticsScreen(
                 )
             }
 
-            items(artists.take(10)) { artist ->
+            items(topArtists) { artist ->
                 Card(
                     modifier = Modifier.fillMaxWidth()
                 ) {

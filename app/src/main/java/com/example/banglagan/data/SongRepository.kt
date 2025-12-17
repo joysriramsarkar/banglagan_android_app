@@ -21,6 +21,9 @@ class SongRepository(private val songDao: SongDao) {
     fun getAllEras(): Flow<List<String>> = songDao.getAllEras()
     fun getAllGenres(): Flow<List<String>> = songDao.getAllGenres()
 
+    // শীর্ষ ১০ জন শিল্পী পাওয়ার ফাংশন
+    fun getTopArtists(): Flow<List<String>> = songDao.getTopArtists()
+
     // নির্দিষ্ট ক্যাটেগরি অনুযায়ী গান পাওয়ার ফাংশন
     fun getSongsByArtist(name: String): Flow<List<Song>> = songDao.getSongsByArtist(name)
     fun getSongsByLyricist(name: String): Flow<List<Song>> = songDao.getSongsByLyricist(name)
