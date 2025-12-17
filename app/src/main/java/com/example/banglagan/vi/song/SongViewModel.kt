@@ -76,6 +76,8 @@ class SongViewModel(private val repository: SongRepository) : ViewModel() {
 
     val artists: StateFlow<List<String>> = repository.getAllArtists()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val topArtists: StateFlow<List<String>> = repository.getTopArtists()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val lyricists: StateFlow<List<String>> = repository.getAllLyricists()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val composers: StateFlow<List<String>> = repository.getAllComposers()

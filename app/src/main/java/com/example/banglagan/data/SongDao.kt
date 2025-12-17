@@ -113,4 +113,8 @@ interface SongDao {
     @Query("SELECT COUNT(DISTINCT genre) FROM songs WHERE genre IS NOT NULL AND genre != ''")
     fun getGenreCount(): Flow<Int>
 
+    // শীর্ষ ১০ জন শিল্পী (গানের সংখ্যা অনুযায়ী)
+    @Query("SELECT artist_name FROM songs WHERE artist_name IS NOT NULL AND artist_name != '' GROUP BY artist_name ORDER BY COUNT(*) DESC LIMIT 10")
+    fun getTopArtists(): Flow<List<String>>
+
 }
